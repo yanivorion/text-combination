@@ -43,8 +43,159 @@ const mkSeg = (n) => ({
   badge:false, badgeColor:'#e4e4e7', badgePadding:'4px 10px', badgeRadius:'6px',
   effect:'none', strokeColor:'#000000', strokeWidth:'2px', strokeHollow:false,
   gradient:false, gradStart:'#3b82f6', gradEnd:'#60a5fa', gradDir:'horizontal',
+  layering:false, layerCount:4, layerColors:['#8b5cf6','#c084fc','#f59e0b','#fbbf24'], layerAngle:150, layerSpace:6,
+  twist:false, twistPattern:'wave', twistOffset:10, twistApply:'char',
   gapAfter:null, offsetX:0, offsetY:0,
 });
+
+const COMBO_PRESETS = [
+  { name:'Script + Sans', segs:[
+    { text:'New', fontFamily:'Pacifico', fontSize:48, fontWeight:'400', color:'#ef4444', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'COLLECTION', fontFamily:'Bebas Neue', fontSize:56, fontWeight:'400', color:'#18181b', letterSpacing:'0.1em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'Bold + Script', segs:[
+    { text:'BOLD', fontFamily:'Abril Fatface', fontSize:64, fontWeight:'400', color:'#1d4ed8', letterSpacing:'0em', textTransform:'uppercase', italic:false },
+    { text:'& Retro', fontFamily:'Lobster', fontSize:48, fontWeight:'400', color:'#f59e0b', letterSpacing:'0em', textTransform:'none', italic:true },
+  ]},
+  { name:'Sticker Pop', segs:[
+    { text:'WOW!', fontFamily:'Bebas Neue', fontSize:72, fontWeight:'400', color:'#ffffff', letterSpacing:'0em', textTransform:'uppercase', italic:false, effect:'retro', strokeColor:'#000000', strokeWidth:'3px' },
+  ]},
+  { name:'Neon Glow', segs:[
+    { text:'NEON', fontFamily:'Space Grotesk', fontSize:64, fontWeight:'700', color:'#00ffdd', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, effect:'neon-glow' },
+  ]},
+  { name:'Stacked', dir:'column', segs:[
+    { text:'COMING', fontFamily:'Inter', fontSize:24, fontWeight:'300', color:'#71717a', letterSpacing:'0.2em', textTransform:'uppercase', italic:false },
+    { text:'SOON', fontFamily:'Bebas Neue', fontSize:72, fontWeight:'400', color:'#18181b', letterSpacing:'0.15em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'CTA Badge', segs:[
+    { text:'CALL', fontFamily:'Abril Fatface', fontSize:56, fontWeight:'400', color:'#059669', letterSpacing:'0em', textTransform:'uppercase', italic:false },
+    { text:'NOW', fontFamily:'Inter', fontSize:32, fontWeight:'700', color:'#ffffff', letterSpacing:'0em', textTransform:'uppercase', italic:false, badge:true, badgeColor:'#059669', badgePadding:'6px 14px', badgeRadius:'6px' },
+  ]},
+  { name:'Vintage', segs:[
+    { text:'Exclusive', fontFamily:'Playfair Display', fontSize:40, fontWeight:'400', color:'#78350f', letterSpacing:'0em', textTransform:'none', italic:true },
+    { text:'VINTAGE', fontFamily:'Josefin Sans', fontSize:48, fontWeight:'700', color:'#78350f', letterSpacing:'0.1em', textTransform:'uppercase', italic:false, textDecoration:'underline' },
+  ]},
+  { name:'3D Extrude', segs:[
+    { text:'FUTURE', fontFamily:'Bebas Neue', fontSize:96, fontWeight:'400', color:'#ec4899', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, layering:true, layerCount:5, layerColors:['#8b5cf6','#c084fc','#f59e0b','#fbbf24','#e879f9'], layerAngle:150, layerSpace:6 },
+  ]},
+  { name:'Minimal', segs:[
+    { text:'Prepared for', fontFamily:'Inter', fontSize:20, fontWeight:'300', color:'#71717a', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'CLIENT', fontFamily:'Inter', fontSize:40, fontWeight:'600', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'Celebration', segs:[
+    { text:"It's my", fontFamily:'Lobster', fontSize:36, fontWeight:'400', color:'#8b5cf6', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'PARTY!', fontFamily:'Bebas Neue', fontSize:56, fontWeight:'400', color:'#ec4899', letterSpacing:'0.05em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'Win Win', dir:'column', gap:0, segs:[
+    { text:'WIN', fontFamily:'Bebas Neue', fontSize:72, fontWeight:'400', color:'#dc2626', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, lineHeight:'0.85' },
+    { text:'WIN', fontFamily:'Bebas Neue', fontSize:72, fontWeight:'400', color:'#dc2626', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, lineHeight:'0.85' },
+  ]},
+  { name:'Sale Event', segs:[
+    { text:'SALE', fontFamily:'DM Serif Display', fontSize:48, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, textDecoration:'line-through' },
+    { text:'is On', fontFamily:'Pacifico', fontSize:28, fontWeight:'400', color:'#b45309', letterSpacing:'0em', textTransform:'none', italic:false },
+  ]},
+  { name:'Open Colorful', segs:[
+    { text:'O', fontFamily:'Titan One', fontSize:56, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'uppercase', italic:false, badge:true, badgeColor:'#fbbf24', badgePadding:'4px 12px', badgeRadius:'999px' },
+    { text:'P', fontFamily:'Titan One', fontSize:56, fontWeight:'400', color:'#ffffff', letterSpacing:'0em', textTransform:'uppercase', italic:false, badge:true, badgeColor:'#16a34a', badgePadding:'4px 12px', badgeRadius:'999px' },
+    { text:'E', fontFamily:'Titan One', fontSize:56, fontWeight:'400', color:'#ffffff', letterSpacing:'0em', textTransform:'uppercase', italic:false, badge:true, badgeColor:'#ea580c', badgePadding:'4px 12px', badgeRadius:'999px' },
+    { text:'N', fontFamily:'Titan One', fontSize:56, fontWeight:'400', color:'#ffffff', letterSpacing:'0em', textTransform:'uppercase', italic:false, badge:true, badgeColor:'#2563eb', badgePadding:'4px 12px', badgeRadius:'999px' },
+  ]},
+  { name:'Rate Us', dir:'column', gap:0, segs:[
+    { text:'PLEASE', fontFamily:'Bebas Neue', fontSize:40, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, lineHeight:'0.95' },
+    { text:'RATE', fontFamily:'Bebas Neue', fontSize:56, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, lineHeight:'0.95' },
+    { text:'US', fontFamily:'Bebas Neue', fontSize:48, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, lineHeight:'0.95' },
+  ]},
+  { name:'Join Us', dir:'column', gap:0, segs:[
+    { text:'Join', fontFamily:'Playfair Display', fontSize:40, fontWeight:'400', color:'#991b1b', letterSpacing:'0em', textTransform:'none', italic:false, lineHeight:'1.1' },
+    { text:'Us', fontFamily:'Playfair Display', fontSize:40, fontWeight:'400', color:'#991b1b', letterSpacing:'0em', textTransform:'none', italic:false, lineHeight:'1.1' },
+    { text:'Now', fontFamily:'Playfair Display', fontSize:40, fontWeight:'400', color:'#991b1b', letterSpacing:'0em', textTransform:'none', italic:false, lineHeight:'1.1' },
+  ]},
+  { name:'Construction', dir:'column', gap:4, segs:[
+    { text:'Under', fontFamily:'Inter', fontSize:22, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'Construction', fontFamily:'Inter', fontSize:22, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'none', italic:false, badge:true, badgeColor:'#fef3c7', badgePadding:'4px 12px', badgeRadius:'3px' },
+  ]},
+  { name:'Agenda', dir:'column', gap:8, segs:[
+    { text:'Agenda', fontFamily:'Playfair Display', fontSize:48, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'none', italic:true },
+    { text:'ENJOY.  EAT.  CREATE', fontFamily:'Josefin Sans', fontSize:12, fontWeight:'300', color:'#71717a', letterSpacing:'0.15em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'Party Badge', segs:[
+    { text:"IT'S MY", fontFamily:'Josefin Sans', fontSize:16, fontWeight:'300', color:'#18181b', letterSpacing:'0.1em', textTransform:'uppercase', italic:false },
+    { text:'PARTY', fontFamily:'Bebas Neue', fontSize:48, fontWeight:'400', color:'#ffffff', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, badge:true, badgeColor:'#f59e0b', badgePadding:'4px 14px', badgeRadius:'3px' },
+  ]},
+  { name:'So On', dir:'column', gap:0, segs:[
+    { text:'COMING', fontFamily:'Inter', fontSize:14, fontWeight:'300', color:'#71717a', letterSpacing:'0.2em', textTransform:'uppercase', italic:false },
+    { text:'SO', fontFamily:'Bebas Neue', fontSize:64, fontWeight:'400', color:'#18181b', letterSpacing:'0.1em', textTransform:'uppercase', italic:false, lineHeight:'0.95' },
+    { text:'ON', fontFamily:'Bebas Neue', fontSize:64, fontWeight:'400', color:'#18181b', letterSpacing:'0.1em', textTransform:'uppercase', italic:false, lineHeight:'0.85' },
+  ]},
+  { name:'Site Notice', dir:'column', gap:6, segs:[
+    { text:'Site under', fontFamily:'Inter', fontSize:16, fontWeight:'300', color:'#71717a', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'construction', fontFamily:'Unbounded', fontSize:26, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'COMING SOON.', fontFamily:'Inter', fontSize:10, fontWeight:'300', color:'#71717a', letterSpacing:'0.15em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'Coming Soon', dir:'column', gap:0, segs:[
+    { text:'C O M I N G', fontFamily:'Josefin Sans', fontSize:14, fontWeight:'300', color:'#18181b', letterSpacing:'0.3em', textTransform:'uppercase', italic:false, textDecoration:'overline' },
+    { text:'S O O N', fontFamily:'Josefin Sans', fontSize:14, fontWeight:'300', color:'#18181b', letterSpacing:'0.3em', textTransform:'uppercase', italic:false, textDecoration:'underline' },
+  ]},
+  { name:'Business Card', dir:'column', align:'flex-start', gap:4, segs:[
+    { text:'CREATED FOR', fontFamily:'Josefin Sans', fontSize:10, fontWeight:'300', color:'#71717a', letterSpacing:'0.2em', textTransform:'uppercase', italic:false },
+    { text:'BILLY WESTOR', fontFamily:'Bebas Neue', fontSize:36, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false },
+    { text:'Head Executive, Polero Builders Inc.', fontFamily:'Inter', fontSize:9, fontWeight:'400', color:'#71717a', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'11 Olive Rd, Huntington Station, NY', fontFamily:'Inter', fontSize:8, fontWeight:'300', color:'#a1a1aa', letterSpacing:'0em', textTransform:'none', italic:false },
+  ]},
+  { name:'Legacies', segs:[
+    { text:'Legacies', fontFamily:'Playfair Display', fontSize:80, fontWeight:'400', color:'#d4d4d8', letterSpacing:'0em', textTransform:'none', italic:false },
+  ]},
+  { name:'Pizza Time', dir:'column', gap:2, segs:[
+    { text:'Pizza', fontFamily:'Pacifico', fontSize:56, fontWeight:'400', color:'#dc2626', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'TIME', fontFamily:'Bebas Neue', fontSize:36, fontWeight:'400', color:'#f59e0b', letterSpacing:'0.1em', textTransform:'uppercase', italic:false, layering:true, layerCount:3, layerColors:['#fbbf24','#fcd34d','#fef3c7'], layerAngle:150, layerSpace:3 },
+  ]},
+  { name:'Proposal', dir:'column', align:'flex-start', gap:4, segs:[
+    { text:'Prepared for', fontFamily:'Lobster', fontSize:16, fontWeight:'400', color:'#71717a', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'HALLIWELL STUDIO', fontFamily:'Inter', fontSize:14, fontWeight:'600', color:'#18181b', letterSpacing:'0.1em', textTransform:'uppercase', italic:false },
+    { text:'PROPOSAL', fontFamily:'Bebas Neue', fontSize:64, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'Graduation', dir:'column', gap:2, segs:[
+    { text:'Congrats!', fontFamily:'Pacifico', fontSize:22, fontWeight:'400', color:'#71717a', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'MICHAEL', fontFamily:'Bebas Neue', fontSize:48, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, lineHeight:'0.95' },
+    { text:'DALE', fontFamily:'Bebas Neue', fontSize:48, fontWeight:'400', color:'#18181b', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, lineHeight:'0.95' },
+    { text:'Class of 2021', fontFamily:'Inter', fontSize:11, fontWeight:'300', color:'#71717a', letterSpacing:'0.05em', textTransform:'none', italic:false },
+  ]},
+  { name:'Wedding', dir:'column', gap:8, segs:[
+    { text:'Thank you for coming!', fontFamily:'Pacifico', fontSize:20, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'We would like to express our sincerest gratitude for celebrating our wedding with us.', fontFamily:'Inter', fontSize:9, fontWeight:'300', color:'#71717a', letterSpacing:'0em', textTransform:'none', italic:false, lineHeight:'1.5' },
+    { text:'BELLA & BRYLE', fontFamily:'Josefin Sans', fontSize:12, fontWeight:'600', color:'#18181b', letterSpacing:'0.1em', textTransform:'uppercase', italic:false },
+  ]},
+  { name:'Dictionary', dir:'column', align:'flex-start', gap:8, segs:[
+    { text:'35%', fontFamily:'Inter', fontSize:72, fontWeight:'800', color:'#18181b', letterSpacing:'-0.05em', textTransform:'none', italic:false },
+    { text:'the action or activity of gathering information about consumers\u2019 needs and preferences.', fontFamily:'Inter', fontSize:12, fontWeight:'300', color:'#52525b', letterSpacing:'0em', textTransform:'none', italic:false, lineHeight:'1.5' },
+  ]},
+  { name:'Enroll', segs:[
+    { text:'Enroll', fontFamily:'Bebas Neue', fontSize:48, fontWeight:'400', color:'#dc2626', letterSpacing:'0em', textTransform:'none', italic:false, rotation:-5 },
+    { text:'Now!', fontFamily:'Bebas Neue', fontSize:48, fontWeight:'400', color:'#ffffff', letterSpacing:'0em', textTransform:'none', italic:false, badge:true, badgeColor:'#eab308', badgePadding:'6px 14px', badgeRadius:'6px', rotation:5 },
+  ]},
+  { name:'Postcard', dir:'column', align:'flex-start', gap:6, segs:[
+    { text:'CHESTER,', fontFamily:'Josefin Sans', fontSize:10, fontWeight:'600', color:'#71717a', letterSpacing:'0.15em', textTransform:'uppercase', italic:false },
+    { text:'Finally found my new home!', fontFamily:'DM Serif Display', fontSize:28, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:"LET'S KEEP IN TOUCH.", fontFamily:'Josefin Sans', fontSize:8, fontWeight:'300', color:'#71717a', letterSpacing:'0.1em', textTransform:'uppercase', italic:false },
+    { text:'Anna', fontFamily:'Pacifico', fontSize:16, fontWeight:'400', color:'#18181b', letterSpacing:'0em', textTransform:'none', italic:false },
+  ]},
+  { name:'Open Daily', segs:[
+    { text:'open', fontFamily:'Pacifico', fontSize:32, fontWeight:'400', color:'#f59e0b', letterSpacing:'0em', textTransform:'none', italic:false },
+    { text:'DAILY', fontFamily:'Bebas Neue', fontSize:52, fontWeight:'400', color:'#ea580c', letterSpacing:'0.05em', textTransform:'uppercase', italic:false, effect:'retro', strokeColor:'#fbbf24', strokeWidth:'2px' },
+  ]},
+];
+
+const TOUR_STEPS = [
+  { sel:'[data-tour="topbar"]', title:'Toolbar', desc:'Switch between HTML and SVG render modes. Replay animations, copy generated code, audit accessibility, or browse the presets gallery.', pos:'bottom' },
+  { sel:'[data-tour="seg-select"]', title:'Segments', desc:'Your composition is built from up to 4 text segments. Select one to edit its style, or use + and \u2212 to add and remove segments.', pos:'bottom' },
+  { sel:'[data-tour="text-style"]', title:'Text Style', desc:'Style the active segment \u2014 change text content, font family, size, weight, color, letter-spacing, line-height, case, decoration, and rotation.', pos:'right' },
+  { sel:'[data-tour="composition"]', title:'Composition', desc:'Control the overall layout: direction, alignment, gap, padding, and wrapping. Set up entrance animations with trigger, preset, duration, stagger, delay, and easing.', pos:'right' },
+  { sel:'[data-tour="effects"]', title:'Effects', desc:'Apply visual effects to each segment: stroke outline, shadows, 3D extrude, neon glow, retro. Plus layering, text twist, badges, and SVG gradients.', pos:'right' },
+  { sel:'[data-tour="canvas"]', title:'Canvas', desc:'Your live preview. Click a segment to select it and drag to reposition. Double-click to reset. Use the corner handle to rotate.', pos:'left' },
+  { sel:'[data-tour="layers"]', title:'Layers', desc:'View all segments at a glance. Drag to reorder, click to select. Adjust per-segment gaps. Grab the header to drag this panel anywhere on the canvas.', pos:'right' },
+  { sel:'[data-tour="bg-swatches"]', title:'Background', desc:'Preview your design against different canvas colors \u2014 light, warm, dark, and deep tones \u2014 to see how it looks in different contexts.', pos:'bottom' },
+  { sel:'[data-tour="presets-btn"]', title:'Presets', desc:'Open a gallery of 30 ready-made text combinations. Click any preset to instantly apply its fonts, colors, effects, and layout.', pos:'bottom' },
+];
 
 // ─── Design Tokens (Tan) ────────────────────────────────────────────────────
 const T = {
@@ -111,6 +262,8 @@ const O = {
   badgePad: [{v:'2px 8px',l:'Compact'},{v:'4px 10px',l:'Small'},{v:'6px 14px',l:'Medium'},{v:'8px 18px',l:'Large'},{v:'10px 24px',l:'XLarge'}],
   badgeRad: [{v:'0px',l:'Square'},{v:'3px',l:'Subtle'},{v:'6px',l:'Rounded'},{v:'10px',l:'More'},{v:'999px',l:'Pill'}],
   gradDir:  [{v:'horizontal',l:'\u2192 Horizontal'},{v:'vertical',l:'\u2193 Vertical'},{v:'diagonal',l:'\u2198 Diagonal'}],
+  twistPat: [{v:'wave',l:'Wave'},{v:'bounce',l:'Bounce'},{v:'collage',l:'Collage'}],
+  twistApply:[{v:'char',l:'Character'},{v:'word',l:'Word'}],
 };
 
 // ─── UI Primitives (stable references) ─────────────────────────────────────────
@@ -216,7 +369,7 @@ const Sel = ({ val, onChange, opts, fontPreview }) => {
       if (trigRef.current?.contains(e.target) || menuRef.current?.contains(e.target)) return;
       setOpen(false);
     };
-    const onScroll = () => setOpen(false);
+    const onScroll = (e) => { if (menuRef.current?.contains(e.target)) return; setOpen(false); };
     document.addEventListener('mousedown', onDown);
     window.addEventListener('scroll', onScroll, true);
     return () => {
@@ -320,8 +473,8 @@ const Sel = ({ val, onChange, opts, fontPreview }) => {
   );
 };
 
-const Acc = ({ open, onToggle, num, title, children }) => (
-  <div style={{ borderBottom:`1px solid ${T.border}` }}>
+const Acc = ({ open, onToggle, num, title, children, ...rest }) => (
+  <div {...rest} style={{ borderBottom:`1px solid ${T.border}` }}>
     <button onClick={onToggle}
       style={{
         display:'flex', alignItems:'center', padding:'0 14px', height:38,
@@ -463,10 +616,14 @@ export default function App() {
   const [mode,     setMode]     = useState('html');
   const [bgColor,  setBgColor]  = useState('#ffffff');
   const [codeOpen, setCodeOpen] = useState(false);
-  const [acc,      setAcc]      = useState({ layers:true, a1:true, a2:true, a3:true });
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const [tourStep,    setTourStep]    = useState(-1);
+  const [tourRect,    setTourRect]    = useState(null);
+  const [acc,      setAcc]      = useState({ layers:true, a1:true, a2:true, a3:true, a4:false });
   const [toast,    setToast]    = useState(false);
   const [a11yOpen, setA11yOpen] = useState(false);
   const [canvasSel,setCanvasSel]= useState(null);
+  const [layerPos, setLayerPos] = useState({ x:12, y:12 });
   const [dragRot,  setDragRot]  = useState(false);
   const layerRef = useRef(null);
   const sortableRef = useRef(null);
@@ -501,6 +658,48 @@ export default function App() {
   const upd = (field, val) =>
     setSegs(prev => { const n=[...prev]; n[activeSeg]={...n[activeSeg],[field]:val}; return n; });
 
+  const applyComboPreset = (preset) => {
+    const newSegs = preset.segs.map((ps, i) => ({
+      ...mkSeg(i + 1),
+      ...ps,
+      textDecoration: ps.textDecoration || 'none',
+      lineHeight: ps.lineHeight || '1',
+      rotation: ps.rotation || 0,
+    }));
+    while (newSegs.length < 4) newSegs.push(mkSeg(newSegs.length + 1));
+    setSegs(newSegs);
+    setSegCount(preset.segs.length);
+    setActiveSeg(0);
+    setGDir(preset.dir || 'row');
+    setGAlign(preset.align || 'center');
+    setGGap(preset.gap !== undefined ? preset.gap : 16);
+  };
+
+  // ── Tour spotlight ─────────────────────────────────────────────────────────
+  const accBeforeTour = useRef(null);
+  useEffect(() => {
+    if (tourStep < 0) {
+      setTourRect(null);
+      if (accBeforeTour.current) { setAcc(accBeforeTour.current); accBeforeTour.current = null; }
+      return;
+    }
+    if (!accBeforeTour.current) accBeforeTour.current = { ...acc };
+    const step = TOUR_STEPS[tourStep];
+    const accMap = { '[data-tour="text-style"]':'a1', '[data-tour="composition"]':'a2', '[data-tour="effects"]':'a3' };
+    const openKey = accMap[step.sel];
+    setAcc({ layers:true, a1: openKey === 'a1', a2: openKey === 'a2', a3: openKey === 'a3' });
+    const measure = () => {
+      const el = document.querySelector(step.sel);
+      if (!el) { setTourRect(null); return; }
+      el.scrollIntoView({ block:'nearest', behavior:'instant' });
+      setTourRect(el.getBoundingClientRect());
+    };
+    const t = setTimeout(measure, 480);
+    const onResize = () => { const el = document.querySelector(step.sel); if (el) setTourRect(el.getBoundingClientRect()); };
+    window.addEventListener('resize', onResize);
+    return () => { clearTimeout(t); window.removeEventListener('resize', onResize); };
+  }, [tourStep]);
+
   // ── Mount entrance ─────────────────────────────────────────────────────────
   useEffect(() => { const t = setTimeout(() => setReady(true), 60); return () => clearTimeout(t); }, []);
 
@@ -521,6 +720,12 @@ export default function App() {
         border-color: ${T.accent} !important;
         box-shadow: ${T.accentGlow} !important;
         outline: none;
+      }
+      [data-uid="${uid}"] input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 12px; height: 12px; border-radius: 50%;
+        background: ${T.accent}; border: none; cursor: pointer;
+        box-shadow: 0 1px 4px rgba(59,130,246,0.3);
       }
       [data-uid="${uid}"] .draggable-mirror {
         opacity: 0.85;
@@ -644,16 +849,31 @@ export default function App() {
   };
 
   const fxStyle = (seg) => {
-    switch (seg.effect) {
-      case 'outline':
-        return { WebkitTextStroke:`${seg.strokeWidth} ${seg.strokeColor}`, WebkitTextFillColor:seg.strokeHollow?'transparent':seg.color, paintOrder:'stroke fill' };
-      case 'soft-shadow':  return { textShadow:'2px 3px 12px rgba(0,0,0,0.22)' };
-      case 'hard-shadow':  return { textShadow:'4px 4px 0 rgba(0,0,0,0.85)' };
-      case '3d-extrude':   return { textShadow: Array.from({length:8},(_,i)=>`${i+1}px ${i+1}px 0 rgba(0,0,0,${(0.065+i*0.01).toFixed(3)})`).join(',') };
-      case 'neon-glow':    return { textShadow:`0 0 8px ${seg.color}99,0 0 20px ${seg.color}66,0 0 42px ${seg.color}44` };
-      case 'retro':        return { WebkitTextStroke:`${seg.strokeWidth} ${seg.strokeColor}`, WebkitTextFillColor:seg.color, textShadow:`5px 5px 0 ${seg.strokeColor}` };
-      default: return {};
+    const base = (() => {
+      switch (seg.effect) {
+        case 'outline':
+          return { WebkitTextStroke:`${seg.strokeWidth} ${seg.strokeColor}`, WebkitTextFillColor:seg.strokeHollow?'transparent':seg.color, paintOrder:'stroke fill' };
+        case 'soft-shadow':  return { textShadow:'2px 3px 12px rgba(0,0,0,0.22)' };
+        case 'hard-shadow':  return { textShadow:'4px 4px 0 rgba(0,0,0,0.85)' };
+        case '3d-extrude':   return { textShadow: Array.from({length:8},(_,i)=>`${i+1}px ${i+1}px 0 rgba(0,0,0,${(0.065+i*0.01).toFixed(3)})`).join(',') };
+        case 'neon-glow':    return { textShadow:`0 0 8px ${seg.color}99,0 0 20px ${seg.color}66,0 0 42px ${seg.color}44` };
+        case 'retro':        return { WebkitTextStroke:`${seg.strokeWidth} ${seg.strokeColor}`, WebkitTextFillColor:seg.color, textShadow:`5px 5px 0 ${seg.strokeColor}` };
+        default: return {};
+      }
+    })();
+    if (seg.layering) {
+      const layers = [];
+      const rad = (seg.layerAngle || 150) * Math.PI / 180;
+      for (let j = seg.layerCount - 1; j >= 0; j--) {
+        const dist = (j + 1) * (seg.layerSpace || 6);
+        const dx = Math.round(Math.cos(rad) * dist * 10) / 10;
+        const dy = Math.round(Math.sin(rad) * dist * 10) / 10;
+        layers.push(`${dx}px ${dy}px 0 ${seg.layerColors[j % seg.layerColors.length]}`);
+      }
+      const existing = base.textShadow || '';
+      base.textShadow = existing ? `${existing}, ${layers.join(', ')}` : layers.join(', ');
     }
+    return base;
   };
 
   const segStyle = (seg) => ({
@@ -673,6 +893,31 @@ export default function App() {
     display:        'inline-block',
     ...fxStyle(seg),
   });
+
+  const twistCalc = (idx, total, pattern, offset) => {
+    const t = total > 1 ? idx / (total - 1) : 0;
+    switch (pattern) {
+      case 'wave':   return { y: Math.sin(idx * 0.9) * offset, r: Math.sin(idx * 0.7) * offset * 0.4 };
+      case 'bounce': return { y: idx % 2 === 0 ? -offset : offset, r: 0 };
+      case 'collage': {
+        const seed = ((idx * 997 + 7) % 17) / 17;
+        const seed2 = ((idx * 631 + 13) % 19) / 19;
+        return { y: (seed - 0.5) * offset * 2, r: (seed2 - 0.5) * offset * 3 };
+      }
+      default: return { y: 0, r: 0 };
+    }
+  };
+
+  const renderSegContent = (seg) => {
+    const text = dispText(seg);
+    if (!seg.twist) return text;
+    const units = seg.twistApply === 'word' ? text.split(/(\s+)/) : text.split('');
+    return units.map((ch, ci) => {
+      if (ch.trim() === '') return <span key={ci} style={{ display:'inline-block', width:ch.length>0?'0.25em':0 }}>{ch}</span>;
+      const { y, r } = twistCalc(ci, units.filter(u => u.trim()).length, seg.twistPattern, seg.twistOffset);
+      return <span key={ci} style={{ display:'inline-block', transform:`translateY(${y}px) rotate(${r}deg)`, transition:'transform 200ms ease' }}>{ch}</span>;
+    });
+  };
 
   // ── SVG builder ────────────────────────────────────────────────────────────
   const buildSVG = () => {
@@ -824,7 +1069,7 @@ export default function App() {
                 zIndex: canvasSel === i ? 5 : undefined,
                 ...(hasPerGap && !isLast ? { [marginProp]: gap } : {}),
               }}>
-              <span style={segStyle(seg)}>{dispText(seg)}</span>
+              <span style={segStyle(seg)}>{renderSegContent(seg)}</span>
               {canvasSel === i && (
                 <div data-handle="rotate" style={{
                   position:'absolute', top:-8, right:-8, width:16, height:16, borderRadius:'50%',
@@ -976,6 +1221,8 @@ export default function App() {
   const IcoCopy   = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5}><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M8 4V2.5a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1V7a1 1 0 0 0 1 1H3.5" strokeLinecap="round"/></svg>;
   const IcoCode   = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M3.5 4L1 6l2.5 2M8.5 4l2.5 2-2.5 2M7 2.5l-2 7" strokeLinecap="round" strokeLinejoin="round"/></svg>;
   const IcoA11y   = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5}><circle cx="6" cy="2" r="1.2"/><path d="M2.5 4.5L6 5l3.5-.5M6 5v2.5M4 11l2-3.5 2 3.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+  const IcoPresets = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><rect x="1" y="1" width="4" height="4" rx="0.5"/><rect x="7" y="1" width="4" height="4" rx="0.5"/><rect x="1" y="7" width="4" height="4" rx="0.5"/><rect x="7" y="7" width="4" height="4" rx="0.5"/></svg>;
+  const IcoTour = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><circle cx="6" cy="6" r="5"/><path d="M4.5 4.2a1.7 1.7 0 0 1 3.2.8c0 1.2-1.7 1-1.7 2.2"/><circle cx="6" cy="9.2" r="0.01" strokeWidth="2"/></svg>;
 
   const A11yPanel = ({ segs: ss, segCount: cnt, gTag: tag, gDir: dir, gAlign: al, gGap: gap, gWrap: wrap, mode: m, dispText: dt, fxStyle: fx, segStyle: sst, genCode: gc }) => {
     const [activeTab, setActiveTab] = useState('tree');
@@ -1252,7 +1499,7 @@ export default function App() {
     }}>
 
       {/* ── TOPBAR ── */}
-      <div style={{ ...glassBar, display:'flex', alignItems:'center', gap:0, padding:'0 18px', height:48, flexShrink:0, zIndex:20, ...enter('tcFadeDown', 0) }}>
+      <div data-tour="topbar" style={{ ...glassBar, display:'flex', alignItems:'center', gap:0, padding:'0 18px', height:48, flexShrink:0, zIndex:20, ...enter('tcFadeDown', 0) }}>
         <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:T.text1, paddingRight:18, marginRight:6, borderRight:`1px solid ${T.border}`, whiteSpace:'nowrap' }}>
           Text Combination
         </span>
@@ -1273,8 +1520,10 @@ export default function App() {
             { onClick:copyCode, icon:IcoCopy, label:'Copy', dark:false, d:160 },
             { onClick:()=>setCodeOpen(o=>!o), icon:IcoCode, label:codeOpen?'Hide Code':'Code', dark:codeOpen, d:200 },
             { onClick:()=>setA11yOpen(o=>!o), icon:IcoA11y, label:a11yOpen?'Close A11y':'A11y', dark:a11yOpen, d:240 },
+            { onClick:()=>setPresetsOpen(o=>!o), icon:IcoPresets, label:'Presets', dark:presetsOpen, d:280, tour:'presets-btn' },
+            { onClick:()=>setTourStep(0), icon:IcoTour, label:'Tour', dark:tourStep>=0, d:320 },
           ].map((b,bi)=>(
-            <div key={bi} style={enter('tcSlideL', b.d)}>
+            <div key={bi} data-tour={b.tour||undefined} style={enter('tcSlideL', b.d)}>
               <TBtn onClick={b.onClick} icon={b.icon} dark={b.dark}>{b.label}</TBtn>
             </div>
           ))}
@@ -1287,7 +1536,7 @@ export default function App() {
         {/* ── PANEL ── */}
         <div style={{ ...glassPanel, width:280, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', ...enter('tcSlideR', 100) }}>
 
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 12px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
+          <div data-tour="seg-select" style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 12px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
             <span style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text4, marginRight:2, whiteSpace:'nowrap' }}>Seg</span>
             <div style={{ display:'flex', gap:3, flex:1, flexWrap:'wrap' }}>
               {Array.from({length:segCount},(_,i)=>(
@@ -1327,94 +1576,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* ── LAYER LIST (collapsible) ── */}
-          <div style={{ borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
-            <button onClick={() => setAcc(p => ({ ...p, layers: !p.layers }))}
-              style={{
-                display:'flex', alignItems:'center', padding:'0 14px', height:32,
-                cursor:'pointer', userSelect:'none', width:'100%', textAlign:'left',
-                background:'none', border:'none', fontFamily:'inherit',
-                transition:`background 350ms ${EASE.out}`,
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = T.accentSoft}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <svg width={8} height={10} viewBox="0 0 8 10" fill={acc.layers ? T.accent : T.text4} style={{ flexShrink:0, marginRight:8 }}>
-                <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
-                <circle cx="2" cy="5" r="1.2"/><circle cx="6" cy="5" r="1.2"/>
-                <circle cx="2" cy="8" r="1.2"/><circle cx="6" cy="8" r="1.2"/>
-              </svg>
-              <span style={{
-                fontSize:10, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase',
-                color: acc.layers ? T.text1 : T.text3, flex:1,
-                transition:`color 400ms ${EASE.out}`,
-              }}>Layers</span>
-              <span style={{ fontSize:9, color:T.text4, marginRight:8 }}>{segCount}</span>
-              <svg width={10} height={6} viewBox="0 0 10 6" fill="none" stroke={acc.layers ? T.accent : T.text4} strokeWidth={1.5}
-                style={{
-                  transition:`transform 500ms ${EASE.spring}, stroke 400ms ${EASE.out}`,
-                  transform: acc.layers ? 'rotate(0deg)' : 'rotate(-90deg)',
-                  flexShrink:0,
-                }}>
-                <path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <div style={{
-              display:'grid',
-              gridTemplateRows: acc.layers ? '1fr' : '0fr',
-              transition:`grid-template-rows 450ms ${EASE.out}`,
-            }}>
-              <div style={{ overflow:'hidden' }}>
-                <div ref={layerRef} style={{
-                  opacity: acc.layers ? 1 : 0,
-                  transform: acc.layers ? 'translateY(0)' : 'translateY(-4px)',
-                  transition:`opacity 350ms ${EASE.out} ${acc.layers ? '80ms' : '0ms'}, transform 450ms ${EASE.spring} ${acc.layers ? '40ms' : '0ms'}`,
-                }}>
-                  {segs.slice(0,segCount).map((seg,i) => (
-                    <div key={i} data-layer-idx={i} style={{
-                      display:'flex', alignItems:'center', gap:6, padding:'5px 12px',
-                      background: activeSeg===i ? T.accentSoft : 'transparent',
-                      cursor:'grab', userSelect:'none',
-                      borderTop: `1px solid ${T.border}`,
-                      transition:`background 300ms ${EASE.out}`,
-                    }}
-                      onClick={()=>{ setActiveSeg(i); setCanvasSel(i); }}
-                    >
-                      <svg width={8} height={10} viewBox="0 0 8 10" fill={T.text3} style={{ flexShrink:0, cursor:'grab' }}>
-                        <circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
-                        <circle cx="2" cy="5" r="1.2"/><circle cx="6" cy="5" r="1.2"/>
-                        <circle cx="2" cy="8" r="1.2"/><circle cx="6" cy="8" r="1.2"/>
-                      </svg>
-                      <span style={{ fontSize:9, fontWeight:700, color:T.accent, width:12 }}>{i+1}</span>
-                      <span style={{ fontSize:10, color:T.text1, fontWeight:500, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:`'${seg.fontFamily}', sans-serif` }}>
-                        {dispText(seg)}
-                      </span>
-                      <span style={{ fontSize:8, color:T.text3, flexShrink:0 }}>{seg.fontSize}px</span>
-                      {i < segCount-1 && (
-                        <div style={{ display:'flex', alignItems:'center', gap:2, flexShrink:0, marginLeft:4 }}>
-                          <svg width={6} height={6} viewBox="0 0 6 6" fill="none" stroke={T.text3} strokeWidth={0.8}>
-                            <line x1="0" y1="3" x2="6" y2="3"/><line x1="3" y1="0" x2="3" y2="6"/>
-                          </svg>
-                          <input type="number" data-gap-idx={i} value={seg.gapAfter ?? gGap} min={0} max={200}
-                            onClick={e => e.stopPropagation()}
-                            onChange={e => {
-                              const v = +e.target.value;
-                              setSegs(prev => { const n=[...prev]; n[i]={...n[i], gapAfter: v}; return n; });
-                            }}
-                            style={{ width:32, height:18, fontSize:9, fontFamily:'inherit', textAlign:'center', border:`1px solid ${T.ctrlBorder}`, borderRadius:4, background:T.ctrl, color:T.text2, padding:0, outline:'none' }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div style={{ flex:1, overflowY:'auto', overflowX:'hidden' }}>
 
-            <Acc open={acc.a1} onToggle={()=>setAcc(p=>({...p,a1:!p.a1}))} num="01" title="Text Style">
+            <Acc data-tour="text-style" open={acc.a1} onToggle={()=>setAcc(p=>({...p,a1:!p.a1}))} num="01" title="Text Style">
               <Row>
                 <Field label="Text"><TxtIn val={s.text} onChange={v=>upd('text',v)}/></Field>
                 <Field label="px" w={52}><NumIn val={s.fontSize} onChange={v=>upd('fontSize',v)} min={6} max={400}/></Field>
@@ -1437,7 +1601,7 @@ export default function App() {
               <Row><Field label="Color"><ColorField val={s.color} onChange={v=>upd('color',v)}/></Field></Row>
             </Acc>
 
-            <Acc open={acc.a2} onToggle={()=>setAcc(p=>({...p,a2:!p.a2}))} num="02" title="Composition">
+            <Acc data-tour="composition" open={acc.a2} onToggle={()=>setAcc(p=>({...p,a2:!p.a2}))} num="02" title="Composition">
               <Row>
                 <Field label="Tag"><Sel val={gTag} onChange={setGTag} opts={O.tag}/></Field>
                 <Field label="Direction"><Sel val={gDir} onChange={setGDir} opts={O.dir}/></Field>
@@ -1466,14 +1630,76 @@ export default function App() {
               </Row>
             </Acc>
 
-            <Acc open={acc.a3} onToggle={()=>setAcc(p=>({...p,a3:!p.a3}))} num="03" title="Effects">
-              <Row><Field label="Effect"><Sel val={s.effect} onChange={v=>upd('effect',v)} opts={O.effect}/></Field></Row>
+            <Acc data-tour="effects" open={acc.a3} onToggle={()=>setAcc(p=>({...p,a3:!p.a3}))} num="03" title="Effects">
+              <Lbl>Quick Effect Presets</Lbl>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:12 }}>
+                {O.effect.map(e => (
+                  <button key={e.v} onClick={() => upd('effect', e.v)} style={{
+                    padding:'5px 9px', fontSize:9, fontWeight:500, fontFamily:'inherit',
+                    background: s.effect === e.v ? T.accent : T.ctrl,
+                    color: s.effect === e.v ? '#fff' : T.text2,
+                    border: `1px solid ${s.effect === e.v ? T.accent : T.ctrlBorder}`,
+                    borderRadius:5, cursor:'pointer',
+                    transition:`all 200ms ${EASE.out}`,
+                    boxShadow: s.effect === e.v ? '0 2px 8px rgba(59,130,246,0.25)' : 'none',
+                  }}>{e.l}</button>
+                ))}
+              </div>
               <Sub show={s.effect==='outline'||s.effect==='retro'}>
                 <Row>
                   <Field label="Stroke"><ColorField val={s.strokeColor} onChange={v=>upd('strokeColor',v)}/></Field>
                   <Field label="W" w={62}><Sel val={s.strokeWidth} onChange={v=>upd('strokeWidth',v)} opts={O.strokeW}/></Field>
                 </Row>
                 <TRow label="Hollow" val={s.strokeHollow} onChange={v=>upd('strokeHollow',v)}/>
+              </Sub>
+              <Sep/>
+              <TRow label="Layering" val={s.layering} onChange={v=>upd('layering',v)}/>
+              <Sub show={s.layering}>
+                <Row>
+                  <Field label="Layers" w={52}><NumIn val={s.layerCount} onChange={v=>upd('layerCount',v)} min={1} max={8}/></Field>
+                  <Field label="Space" w={52}><NumIn val={s.layerSpace} onChange={v=>upd('layerSpace',v)} min={1} max={60}/></Field>
+                </Row>
+                <Row>
+                  <Field label="Angle">
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <input type="range" min={0} max={360} value={s.layerAngle} onChange={e=>upd('layerAngle',+e.target.value)}
+                        style={{ flex:1, height:3, appearance:'none', WebkitAppearance:'none', background:T.ctrlBorder, borderRadius:2, outline:'none', cursor:'pointer' }}/>
+                      <span style={{ fontSize:9, color:T.text3, minWidth:28, textAlign:'right' }}>{s.layerAngle}°</span>
+                    </div>
+                  </Field>
+                </Row>
+                <Lbl>Layer Colors</Lbl>
+                <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:8 }}>
+                  {Array.from({ length: s.layerCount }, (_, ci) => (
+                    <div key={ci} style={{ position:'relative', width:22, height:22, borderRadius:5, border:`1px solid ${T.ctrlBorder}`, overflow:'hidden', cursor:'pointer' }}>
+                      <input type="color" value={s.layerColors[ci % s.layerColors.length] || '#888888'}
+                        onChange={e => {
+                          const nc = [...s.layerColors];
+                          while (nc.length <= ci) nc.push('#888888');
+                          nc[ci] = e.target.value;
+                          upd('layerColors', nc);
+                        }}
+                        style={{ position:'absolute', inset:-4, width:'130%', height:'130%', cursor:'pointer', border:'none' }}/>
+                    </div>
+                  ))}
+                </div>
+              </Sub>
+              <Sep/>
+              <TRow label="Text Twist" val={s.twist} onChange={v=>upd('twist',v)}/>
+              <Sub show={s.twist}>
+                <Row>
+                  <Field label="Apply Per"><Sel val={s.twistApply} onChange={v=>upd('twistApply',v)} opts={O.twistApply}/></Field>
+                  <Field label="Pattern"><Sel val={s.twistPattern} onChange={v=>upd('twistPattern',v)} opts={O.twistPat}/></Field>
+                </Row>
+                <Row>
+                  <Field label="Offset">
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <input type="range" min={1} max={40} value={s.twistOffset} onChange={e=>upd('twistOffset',+e.target.value)}
+                        style={{ flex:1, height:3, appearance:'none', WebkitAppearance:'none', background:T.ctrlBorder, borderRadius:2, outline:'none', cursor:'pointer' }}/>
+                      <span style={{ fontSize:9, color:T.text3, minWidth:20, textAlign:'right' }}>{s.twistOffset}</span>
+                    </div>
+                  </Field>
+                </Row>
               </Sub>
               <Sep/>
               <TRow label="Badge" val={s.badge} onChange={v=>upd('badge',v)}/>
@@ -1508,7 +1734,7 @@ export default function App() {
             <span style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text4, marginRight:4 }}>
               {a11yOpen ? 'Accessibility' : 'Canvas'}
             </span>
-            {!a11yOpen && <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+            {!a11yOpen && <div data-tour="bg-swatches" style={{ display:'flex', gap:6, alignItems:'center' }}>
               {BG_SWATCHES.map(v=>(
                 <button key={v} onClick={()=>setBgColor(v)} title={v} style={{
                   width:16, height:16, borderRadius:'50%', background:v,
@@ -1531,8 +1757,100 @@ export default function App() {
             <A11yPanel segs={segs} segCount={segCount} gTag={gTag} gDir={gDir} gAlign={gAlign} gGap={gGap} gWrap={gWrap} mode={mode} dispText={dispText} fxStyle={fxStyle} segStyle={segStyle} genCode={genCode}/>
           ) : (
             <>
-              <div ref={stageRef} onClick={() => setCanvasSel(null)} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', background:bgColor, overflow:'hidden', transition:`background 300ms ${EASE.out}`, padding:gPad, borderRadius:'0 0 13px 0' }}>
-                {mode === 'html' ? buildHTML() : buildSVG()}
+              <div data-tour="canvas" style={{ flex:1, position:'relative', overflow:'hidden', borderRadius:'0 0 13px 0' }}>
+                <div ref={stageRef} onClick={() => setCanvasSel(null)} style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:bgColor, overflow:'hidden', transition:`background 300ms ${EASE.out}`, padding:gPad }}>
+                  {mode === 'html' ? buildHTML() : buildSVG()}
+                </div>
+
+                {/* ── Floating Layers Panel ── */}
+                <div data-tour="layers" onClick={e => e.stopPropagation()} style={{
+                  position:'absolute', top:layerPos.y, left:layerPos.x, width:210, zIndex:10,
+                  background:'rgba(255,255,255,0.82)', backdropFilter:'blur(20px) saturate(160%)', WebkitBackdropFilter:'blur(20px) saturate(160%)',
+                  border:`1px solid ${T.glassBorder}`, borderRadius:10,
+                  boxShadow:'0 4px 20px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.03)',
+                  overflow:'hidden',
+                }}>
+                  <div
+                    style={{
+                      display:'flex', alignItems:'center', padding:'0 10px', height:28,
+                      cursor:'grab', userSelect:'none',
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const startX = e.clientX, startY = e.clientY;
+                      const origX = layerPos.x, origY = layerPos.y;
+                      let moved = false;
+                      document.body.style.cursor = 'grabbing';
+                      const onMove = (ev) => {
+                        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+                        if (!moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+                        moved = true;
+                        setLayerPos({ x: origX + dx, y: origY + dy });
+                      };
+                      const onUp = () => {
+                        document.body.style.cursor = '';
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                        if (!moved) setAcc(p => ({ ...p, layers: !p.layers }));
+                      };
+                      document.addEventListener('mousemove', onMove);
+                      document.addEventListener('mouseup', onUp);
+                    }}
+                  >
+                    <svg width={7} height={9} viewBox="0 0 8 10" fill={T.accent} style={{ flexShrink:0, marginRight:6 }}>
+                      <circle cx="2" cy="2" r="1.1"/><circle cx="6" cy="2" r="1.1"/>
+                      <circle cx="2" cy="5" r="1.1"/><circle cx="6" cy="5" r="1.1"/>
+                      <circle cx="2" cy="8" r="1.1"/><circle cx="6" cy="8" r="1.1"/>
+                    </svg>
+                    <span style={{ fontSize:9, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', color:T.text1, flex:1 }}>Layers</span>
+                    <span style={{ fontSize:8, color:T.text4, marginRight:6 }}>{segCount}</span>
+                    <svg width={8} height={5} viewBox="0 0 10 6" fill="none" stroke={T.accent} strokeWidth={1.5}
+                      style={{ transition:`transform 300ms ${EASE.spring}`, transform: acc.layers ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink:0 }}>
+                      <path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div style={{
+                    display:'grid', gridTemplateRows: acc.layers ? '1fr' : '0fr',
+                    transition:`grid-template-rows 350ms ${EASE.out}`,
+                  }}>
+                    <div style={{ overflow:'hidden' }}>
+                      <div ref={layerRef} style={{ borderTop:`1px solid ${T.border}` }}>
+                        {segs.slice(0,segCount).map((seg,i) => (
+                          <div key={i} data-layer-idx={i} style={{
+                            display:'flex', alignItems:'center', gap:5, padding:'3px 10px',
+                            background: activeSeg===i ? T.accentSoft : 'transparent',
+                            cursor:'grab', userSelect:'none',
+                            borderTop: i > 0 ? `1px solid ${T.border}` : 'none',
+                            transition:`background 200ms ${EASE.out}`,
+                          }}
+                            onClick={()=>{ setActiveSeg(i); setCanvasSel(i); }}
+                          >
+                            <svg width={6} height={8} viewBox="0 0 8 10" fill={T.text3} style={{ flexShrink:0, cursor:'grab' }}>
+                              <circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/>
+                              <circle cx="2" cy="5" r="1"/><circle cx="6" cy="5" r="1"/>
+                              <circle cx="2" cy="8" r="1"/><circle cx="6" cy="8" r="1"/>
+                            </svg>
+                            <span style={{ fontSize:8, fontWeight:700, color:T.accent, width:10 }}>{i+1}</span>
+                            <span style={{ fontSize:9, color:T.text1, fontWeight:500, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontFamily:`'${seg.fontFamily}', sans-serif` }}>
+                              {dispText(seg)}
+                            </span>
+                            <span style={{ fontSize:7, color:T.text3, flexShrink:0 }}>{seg.fontSize}px</span>
+                            {i < segCount-1 && (
+                              <input type="number" data-gap-idx={i} value={seg.gapAfter ?? gGap} min={0} max={200}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => {
+                                  const v = +e.target.value;
+                                  setSegs(prev => { const n=[...prev]; n[i]={...n[i], gapAfter: v}; return n; });
+                                }}
+                                style={{ width:26, height:15, fontSize:7, fontFamily:'inherit', textAlign:'center', border:`1px solid ${T.ctrlBorder}`, borderRadius:3, background:'rgba(255,255,255,0.6)', color:T.text2, padding:0, outline:'none', flexShrink:0 }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div style={{ borderTop:`1px solid ${T.border}`, flexShrink:0, maxHeight:codeOpen?'42%':40, overflow:'hidden', transition:`max-height 350ms ${EASE.out}` }}>
@@ -1558,6 +1876,176 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {/* ── TOUR OVERLAY ── */}
+      {tourStep >= 0 && tourRect && createPortal(
+        (() => {
+          const step = TOUR_STEPS[tourStep];
+          const pad = 8;
+          const tipW = 280;
+          const gap = 16;
+          const r = tourRect;
+          let tipStyle = {};
+          switch (step.pos) {
+            case 'bottom': tipStyle = { top:r.bottom+pad+gap, left:Math.max(12, Math.min(window.innerWidth-tipW-12, r.left+r.width/2-tipW/2)) }; break;
+            case 'top': tipStyle = { top:r.top-pad-gap, left:Math.max(12, Math.min(window.innerWidth-tipW-12, r.left+r.width/2-tipW/2)), transform:'translateY(-100%)' }; break;
+            case 'right': tipStyle = { top:Math.max(12, Math.min(window.innerHeight-200, r.top+r.height/2-70)), left:r.right+pad+gap }; break;
+            case 'left': tipStyle = { top:Math.max(12, Math.min(window.innerHeight-200, r.top+r.height/2-70)), left:r.left-pad-gap-tipW }; break;
+          }
+          return (
+            <div style={{ position:'fixed', inset:0, zIndex:99999 }}>
+              <div onClick={()=>setTourStep(-1)} style={{ position:'fixed', inset:0 }}/>
+              <div style={{
+                position:'fixed',
+                top:r.top-pad, left:r.left-pad,
+                width:r.width+pad*2, height:r.height+pad*2,
+                borderRadius:12,
+                boxShadow:'0 0 0 9999px rgba(15,23,42,0.55)',
+                transition:`all 400ms ${EASE.out}`,
+                pointerEvents:'none',
+              }}/>
+              <div style={{
+                position:'fixed', ...tipStyle, width:tipW,
+                background:'rgba(255,255,255,0.97)',
+                backdropFilter:'blur(20px) saturate(160%)', WebkitBackdropFilter:'blur(20px) saturate(160%)',
+                border:`1px solid ${T.glassBorder}`,
+                borderRadius:14, padding:'16px 18px',
+                boxShadow:'0 12px 48px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06)',
+                fontFamily:sysFont,
+                transition:`top 400ms ${EASE.out}, left 400ms ${EASE.out}, transform 400ms ${EASE.out}`,
+                pointerEvents:'auto',
+              }}>
+                <div style={{ display:'flex', alignItems:'center', marginBottom:10 }}>
+                  <span style={{ fontSize:8, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:T.accent, background:T.accentSoft, padding:'3px 8px', borderRadius:5 }}>
+                    {tourStep+1} / {TOUR_STEPS.length}
+                  </span>
+                  <div style={{ flex:1 }}/>
+                  <button onClick={()=>setTourStep(-1)} style={{
+                    width:20, height:20, borderRadius:5, background:'none', border:`1px solid ${T.ctrlBorder}`,
+                    cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0,
+                    color:T.text3, fontSize:13, lineHeight:1, fontFamily:'inherit',
+                  }}
+                    onMouseEnter={e=>e.currentTarget.style.background=T.accentSoft}
+                    onMouseLeave={e=>e.currentTarget.style.background='none'}
+                  >&times;</button>
+                </div>
+                <div style={{ fontSize:14, fontWeight:700, color:T.text1, marginBottom:6, letterSpacing:'-0.01em' }}>{step.title}</div>
+                <div style={{ fontSize:11, color:T.text2, lineHeight:1.65, marginBottom:16 }}>{step.desc}</div>
+                <div style={{ display:'flex', gap:6, justifyContent:'space-between', alignItems:'center' }}>
+                  <button onClick={()=>setTourStep(-1)} style={{
+                    padding:'5px 10px', fontSize:10, fontWeight:400, fontFamily:'inherit',
+                    background:'none', border:'none', cursor:'pointer', color:T.text3,
+                  }}>Skip tour</button>
+                  <div style={{ display:'flex', gap:6 }}>
+                    {tourStep > 0 && (
+                      <button onClick={()=>setTourStep(s=>s-1)} style={{
+                        padding:'6px 14px', fontSize:10, fontWeight:500, fontFamily:'inherit',
+                        background:'rgba(255,255,255,0.6)', border:`1px solid ${T.ctrlBorder}`,
+                        borderRadius:7, cursor:'pointer', color:T.text2,
+                        transition:`all 200ms ${EASE.out}`,
+                      }}
+                        onMouseEnter={e=>e.currentTarget.style.background=T.ctrlHover}
+                        onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.6)'}
+                      >Back</button>
+                    )}
+                    <button onClick={()=>tourStep<TOUR_STEPS.length-1?setTourStep(s=>s+1):setTourStep(-1)} style={{
+                      padding:'6px 16px', fontSize:10, fontWeight:600, fontFamily:'inherit',
+                      background:T.accent, border:'none',
+                      borderRadius:7, cursor:'pointer', color:'#fff',
+                      boxShadow:'0 2px 10px rgba(59,130,246,0.3)',
+                      transition:`all 200ms ${EASE.out}`,
+                    }}
+                      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(59,130,246,0.4)';}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 2px 10px rgba(59,130,246,0.3)';}}
+                    >{tourStep<TOUR_STEPS.length-1?'Next':'Done'}</button>
+                  </div>
+                </div>
+                <div style={{ display:'flex', justifyContent:'center', gap:4, marginTop:12 }}>
+                  {TOUR_STEPS.map((_,i)=>(
+                    <div key={i} onClick={()=>setTourStep(i)} style={{
+                      width:i===tourStep?16:6, height:6, borderRadius:3,
+                      background:i===tourStep?T.accent:i<tourStep?'rgba(59,130,246,0.3)':'rgba(0,0,0,0.08)',
+                      cursor:'pointer',
+                      transition:`all 300ms ${EASE.spring}`,
+                    }}/>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
+
+      {/* ── PRESETS MODAL ── */}
+      {presetsOpen && createPortal(
+        <div onClick={() => setPresetsOpen(false)} style={{
+          position:'fixed', inset:0, zIndex:9998,
+          background:'rgba(15,23,42,0.25)',
+          backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width:660, maxWidth:'92vw', maxHeight:'82vh',
+            background:'rgba(255,255,255,0.94)',
+            backdropFilter:'blur(24px) saturate(180%)', WebkitBackdropFilter:'blur(24px) saturate(180%)',
+            border:`1px solid ${T.glassBorder}`,
+            borderRadius:16,
+            boxShadow:'0 24px 80px rgba(0,0,0,0.14), 0 8px 24px rgba(0,0,0,0.06)',
+            display:'flex', flexDirection:'column',
+            overflow:'hidden',
+          }}>
+            <div style={{ display:'flex', alignItems:'center', padding:'12px 18px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
+              <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text1, flex:1 }}>Presets</span>
+              <span style={{ fontSize:9, color:T.text3, marginRight:12 }}>{COMBO_PRESETS.length} templates</span>
+              <button onClick={() => setPresetsOpen(false)} style={{
+                width:24, height:24, borderRadius:6, background:'none', border:`1px solid ${T.ctrlBorder}`,
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0,
+                transition:`all 200ms ${EASE.out}`,
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = T.accentSoft}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <svg width={8} height={8} viewBox="0 0 10 10" fill="none" stroke={T.text3} strokeWidth={1.5} strokeLinecap="round">
+                  <line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/>
+                </svg>
+              </button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:16 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
+                {COMBO_PRESETS.map((p, pi) => (
+                  <button key={pi} onClick={() => { applyComboPreset(p); setPresetsOpen(false); }} style={{
+                    padding:'14px 10px 10px', background:'rgba(255,255,255,0.55)', border:`1px solid ${T.ctrlBorder}`,
+                    borderRadius:10, cursor:'pointer', fontFamily:'inherit', textAlign:'center',
+                    transition:`all 200ms ${EASE.out}`,
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.background = 'rgba(255,255,255,0.95)'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.06)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = T.ctrlBorder; e.currentTarget.style.background = 'rgba(255,255,255,0.55)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <div style={{ height:36, display:'flex', alignItems:'center', justifyContent:'center', gap:4, marginBottom:6, overflow:'hidden' }}>
+                      {p.segs.map((ps, si) => (
+                        <span key={si} style={{
+                          fontFamily:`'${ps.fontFamily}', sans-serif`,
+                          fontSize: Math.min(ps.fontSize * 0.24, 16),
+                          fontWeight: ps.fontWeight,
+                          color: ps.color,
+                          fontStyle: ps.italic ? 'italic' : 'normal',
+                          textTransform: ps.textTransform || 'none',
+                          letterSpacing: ps.letterSpacing || '0em',
+                          lineHeight:1.1, whiteSpace:'nowrap',
+                          ...(ps.badge ? { background:ps.badgeColor, padding:'1px 5px', borderRadius:3 } : {}),
+                        }}>{ps.text}</span>
+                      ))}
+                    </div>
+                    <div style={{ fontSize:9, color:T.text3, fontWeight:500, letterSpacing:'0.04em' }}>{p.name}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ── TOAST ── */}
       <div style={{
