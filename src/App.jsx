@@ -2945,39 +2945,26 @@ export default function App() {
 
                 case 'pyramid': {
                   const layers = [
-                    { n:1, label:'Wrapper', color:'#3730a3' },
-                    { n:2, label:'Text Style', color:'#4f46e5' },
-                    { n:3, label:'Layout', color:'#6366f1' },
-                    { n:4, label:'Effects', color:'#818cf8' },
-                    { n:5, label:'Animation', color:'#a78bfa' },
+                    { n:1, label:'Semantic Wrapper', color:'#3730a3', w:'100%' },
+                    { n:2, label:'Text Style', color:'#4f46e5', w:'85%' },
+                    { n:3, label:'Layout', color:'#6366f1', w:'70%' },
+                    { n:4, label:'Effects', color:'#818cf8', w:'55%' },
+                    { n:5, label:'Animation', color:'#a78bfa', w:'40%' },
                   ];
                   return (
-                    <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', height:'100%', gap:'clamp(10px,1.2vw,16px)' }}>
-                      <div style={{ display:'flex', alignItems:'center', width:'100%' }}>
-                        {layers.map((l,i) => (
-                          <div key={i} style={{ flex:1, display:'flex', alignItems:'center', opacity:0, animation:`pdFadeIn 0.5s ${ease} ${0.3+i*0.2}s forwards` }}>
-                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative', zIndex:2 }}>
-                              <div style={{ width:'clamp(28px,3vw,40px)', height:'clamp(28px,3vw,40px)', borderRadius:'50%', background:l.color,
-                                display:'flex', alignItems:'center', justifyContent:'center',
-                                fontSize:'clamp(11px,1.2vw,15px)', fontWeight:700, color:'#fff',
-                                boxShadow:`0 0 0 3px #F0F0F0, 0 0 0 5px ${l.color}40` }}>
-                                {l.n}
-                              </div>
-                              <div style={{ fontSize:'clamp(8px,0.75vw,10px)', fontWeight:600, color:l.color, marginTop:6,
-                                textAlign:'center', whiteSpace:'nowrap', letterSpacing:'0.02em' }}>{l.label}</div>
-                            </div>
-                            {i < layers.length - 1 && (
-                              <div style={{ flex:1, height:2, background:`linear-gradient(90deg, ${l.color}, ${layers[i+1].color})`,
-                                marginTop: -18,
-                                opacity:0, animation:`pdSlideRight 0.4s ${ease} ${0.5+i*0.2}s forwards` }} />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ display:'flex', justifyContent:'space-between', opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.6s forwards` }}>
-                        <span style={{ fontSize:'clamp(8px,0.7vw,10px)', color:'#3730a3', fontWeight:600 }}>{'\u2190'} Most Critical</span>
-                        <span style={{ fontSize:'clamp(8px,0.7vw,10px)', color:'#a78bfa' }}>Nice to Have {'\u2192'}</span>
-                      </div>
+                    <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', height:'100%', gap:'clamp(6px,0.8vw,10px)' }}>
+                      <div style={{ fontSize:'clamp(8px,0.7vw,10px)', fontWeight:600, color:'#3730a3', letterSpacing:'0.06em', textTransform:'uppercase',
+                        opacity:0, animation:`pdFadeIn 0.4s ${ease} 0.2s forwards`, marginBottom:4 }}>Most Critical</div>
+                      {layers.map((l,i) => (
+                        <div key={i} style={{ width:l.w, display:'flex', alignItems:'center', gap:'clamp(8px,1vw,14px)',
+                          background:l.color, borderRadius:6, padding:'clamp(6px,0.7vw,10px) clamp(10px,1.2vw,16px)',
+                          opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.3+i*0.15}s forwards` }}>
+                          <div style={{ fontSize:'clamp(12px,1.3vw,18px)', fontWeight:700, color:'rgba(255,255,255,0.5)', minWidth:'1.5em' }}>{l.n}</div>
+                          <div style={{ fontSize:'clamp(10px,1vw,14px)', fontWeight:600, color:'#fff', letterSpacing:'0.02em' }}>{l.label}</div>
+                        </div>
+                      ))}
+                      <div style={{ fontSize:'clamp(8px,0.7vw,10px)', fontWeight:500, color:'#a78bfa', letterSpacing:'0.06em', textTransform:'uppercase',
+                        opacity:0, animation:`pdFadeIn 0.4s ${ease} 1.2s forwards`, marginTop:4 }}>Nice to Have</div>
                     </div>
                   );
                 }
