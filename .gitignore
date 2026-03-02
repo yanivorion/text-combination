@@ -4,3 +4,7 @@ dist
 
 # Local Netlify folder
 .netlify
+*.pdf
+PD Template/
+html vs svg pros and cons/
+deno.lock
