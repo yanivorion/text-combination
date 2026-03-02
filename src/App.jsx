@@ -889,34 +889,25 @@ export default function App() {
     { type:'content', chapterNum:1, chapterTitle:'User Intent', section:'What',
       body:'A text combination is a bundle of styled text components that together form a single visual composition\u2014like a designed sticker. Users want an editable, pre-designed element they can drop on their site: creative, impressive, and easy to customize.',
       demo:'definition' },
-    { type:'content', chapterNum:1, chapterTitle:'User Intent', section:'Who',
-      body:'Non-designer DIY users, small business owners, and creative professionals. They want professional-looking results without typography knowledge\u2014compositions like \u201cSALE / New Collection\u201d or \u201cCOMING SOON\u201d that just work.',
-      demo:'audience' },
 
     // ── Ch 2: The Problem ───────────────────────────────────────────────────
     { type:'chapter', num:2, title:'The Problem',
       summary:'Each text component has its own HTML tag\u2014reading order, semantics, and accessibility are broken for screen readers and search engines.' },
-    { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'SEO',
-      body:'Multiple independent heading tags confuse Google\u2019s hierarchy. A composition of H1 + H2 + H3 is treated as three separate headings, not one combined message. Screen readers announce disconnected fragments with no defined reading order.',
+    { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'Semantics, Accessibility and Reading Order',
+      body:'Multiple independent heading tags confuse Google\u2019s hierarchy. A composition of H1 + H2 + H3 is treated as three separate headings, not one combined message. Screen readers announce disconnected fragments with no defined reading order. The accessibility team blocks shipping in the current form\u2014a proper HTML solution is required before release.',
       demo:'seo' },
-    { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'Blocked',
-      body:'The accessibility team blocks shipping in the current form. A proper HTML solution is required before release. Solve the HTML structure\u2014and we unlock a high-demand feature that competitors already offer and users are asking for.',
-      demo:'blocker' },
 
-    // ── Ch 3: Why Now? ──────────────────────────────────────────────────────
-    { type:'chapter', num:3, title:'Why Now?',
+    // ── Ch 3: Research ────────────────────────────────────────────────────
+    { type:'chapter', num:3, title:'Research',
       summary:'Canva, Adobe Express, and Figma Sites already offer text compositions. Users are asking for this. We need to close the gap.' },
-    { type:'content', chapterNum:3, chapterTitle:'Why Now?', section:'Market',
+    { type:'content', chapterNum:3, chapterTitle:'Research', section:'Market',
       body:'Canva offers premade text combination presets via grouped elements. Adobe Express ships styled compositions with a rich preset library. Figma is moving into web building where text styling is a key differentiator.',
       demo:'competitors' },
-    { type:'content', chapterNum:3, chapterTitle:'Why Now?', section:'Value',
-      body:'Sticker-style compositions are one of the most requested visual elements from DIY users. Text combinations enrich Wix\u2019s template library\u2014a direct acquisition driver. This closes the gap between what professionals can do in Photoshop and what Wix can offer.',
-      demo:'value' },
 
     // ── Ch 4: Our Approach ──────────────────────────────────────────────────
     { type:'chapter', num:4, title:'Our Approach',
-      summary:'A new custom component\u2014not grouped text elements\u2014with two alternative rendering paths: HTML Mode or SVG Mode.' },
-    { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'Custom Component',
+      summary:'A new designated component with 2 output alternatives: HTML Mode or SVG Mode.' },
+    { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'New Custom Component',
       body:'This is not regular text components grouped together. It\u2019s a new custom component with a new experience. Content is edited in a panel\u2014not on the canvas. The DOM order stays correct at all times, and screen readers read the composition as a single semantic unit.',
       demo:'custom' },
     { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'HTML Mode',
@@ -2714,9 +2705,9 @@ export default function App() {
               <div style={{ display:'flex', flexDirection:'column' }}>
                 {[
                   { num:'01', title:'User Intent', desc:'What users want to achieve with text combinations' },
-                  { num:'02', title:'The Problem', desc:'SEO & accessibility challenges blocking release' },
-                  { num:'03', title:'Why Now?', desc:'Competitive gap and user demand' },
-                  { num:'04', title:'Our Approach', desc:'Custom component + HTML vs SVG alternatives' },
+                  { num:'02', title:'The Problem', desc:'Semantics, accessibility & reading order challenges' },
+                  { num:'03', title:'Research', desc:'Competitive landscape and market positioning' },
+                  { num:'04', title:'Our Approach', desc:'Designated component + HTML vs SVG alternatives' },
                   { num:'05', title:'The Solution', desc:'Bottom-to-top: wrapper \u2192 style \u2192 layout \u2192 effects \u2192 animation' },
                   { num:'06', title:'The Flow', desc:'End-to-end preset creation walkthrough' },
                 ].map((item, i) => (
@@ -2814,15 +2805,24 @@ export default function App() {
                 );
 
                 case 'seo': return (
-                  <div style={{ display:'flex', flexDirection:'column', gap:8, justifyContent:'center', height:'100%' }}>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(8px,1vw,14px)', justifyContent:'center', height:'100%' }}>
                     {['<h1>SALE</h1>','<h2>New Collection</h2>','<h3>Shop Now</h3>'].map((t,i) => (
                       <div key={i} style={{ display:'flex', alignItems:'center', gap:10, opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.3+i*0.2}s forwards` }}>
                         <div style={{ fontSize:'clamp(10px,1vw,13px)', fontFamily:mono, color:'#ef4444', background:'#fef2f2', padding:'4px 8px', borderRadius:4 }}>{t}</div>
-                        <div style={{ fontSize:16, color:'#ef4444', opacity:0, animation:`pdFadeIn 0.3s ${ease} ${0.8+i*0.2}s forwards` }}>\u2717</div>
+                        <div style={{ fontSize:14, color:'#ef4444', opacity:0, animation:`pdFadeIn 0.3s ${ease} ${0.8+i*0.2}s forwards` }}>{'\u2717'}</div>
                       </div>
                     ))}
-                    <div style={{ marginTop:8, fontSize:'clamp(10px,1vw,12px)', color:'#ef4444', fontWeight:500,
-                      opacity:0, animation:`pdFadeIn 0.6s ${ease} 1.5s forwards` }}>3 separate headings \u2014 no semantic relationship</div>
+                    <div style={{ marginTop:4, fontSize:'clamp(9px,0.9vw,11px)', color:'#ef4444', fontWeight:500,
+                      opacity:0, animation:`pdFadeIn 0.6s ${ease} 1.2s forwards` }}>3 separate headings {'\u2014'} no semantic relationship</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:'clamp(8px,1vw,14px)', padding:'clamp(8px,1vw,14px)',
+                      background:'#fef2f2', borderRadius:8, border:'1px solid #fca5a5',
+                      opacity:0, animation:`pdScale 0.5s ${ease} 1.5s forwards` }}>
+                      <div style={{ fontSize:'clamp(16px,2vw,24px)' }}>{'\u26D4'}</div>
+                      <div>
+                        <div style={{ fontSize:'clamp(11px,1.1vw,14px)', fontWeight:700, color:'#dc2626' }}>BLOCKED</div>
+                        <div style={{ fontSize:'clamp(9px,0.85vw,11px)', color:'#888' }}>Accessibility review required before release</div>
+                      </div>
+                    </div>
                   </div>
                 );
 
@@ -2872,7 +2872,7 @@ export default function App() {
                         <div key={i} style={{ fontSize:'clamp(10px,1vw,13px)', color:'#555', padding:'4px 0', borderBottom:'1px solid #f3f4f6' }}>{s}</div>
                       ))}
                     </div>
-                    <div style={{ fontSize:'clamp(16px,2vw,24px)', color:'#ccc', opacity:0, animation:`pdFadeIn 0.4s ${ease} 0.7s forwards` }}>\u2192</div>
+                    <div style={{ fontSize:'clamp(16px,2vw,24px)', color:'#ccc', opacity:0, animation:`pdFadeIn 0.4s ${ease} 0.7s forwards` }}>{'\u2192'}</div>
                     <div style={{ flex:1, background:'#18181b', borderRadius:8, padding:'clamp(10px,1.2vw,16px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
                       opacity:0, animation:`pdScale 0.5s ${ease} 0.8s forwards` }}>
                       <div style={{ fontSize:'clamp(9px,0.8vw,11px)', fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Canvas</div>
@@ -2891,9 +2891,9 @@ export default function App() {
                     {demoLine('  <span style="font-size:12px">SHOP NOW</span>', 0.9, '#333')}
                     {demoLine('</h1>', 1.1, '#16a34a')}
                     <div style={{ marginTop:12, display:'flex', gap:6, opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.4s forwards` }}>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 SEO</span>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 A11y</span>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Selection</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>{'\u2713'} SEO</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>{'\u2713'} A11y</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>{'\u2713'} Selection</span>
                     </div>
                   </div>
                 );
@@ -2907,9 +2907,9 @@ export default function App() {
                     {demoLine('  <text x="0" y="120">New Collection</text>', 0.9, '#333')}
                     {demoLine('</svg>', 1.1, '#3b82f6')}
                     <div style={{ marginTop:12, display:'flex', gap:6, opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.4s forwards` }}>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Gradients</span>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Stroke</span>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Filters</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>{'\u2713'} Gradients</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>{'\u2713'} Stroke</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>{'\u2713'} Filters</span>
                     </div>
                   </div>
                 );
@@ -2923,8 +2923,8 @@ export default function App() {
                       <div key={mi} style={{ flex:1, borderRadius:8, border:`1px solid ${m.color}22`, padding:'clamp(8px,1vw,14px)',
                         opacity:0, animation:`pdScale 0.5s ${ease} ${0.3+mi*0.2}s forwards` }}>
                         <div style={{ fontSize:'clamp(11px,1.1vw,14px)', fontWeight:700, color:m.color, marginBottom:8 }}>{m.title}</div>
-                        {m.pros.map((p,i) => <div key={i} style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#555', lineHeight:1.7 }}>\u2713 {p}</div>)}
-                        {m.cons.map((c,i) => <div key={i} style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#bbb', lineHeight:1.7 }}>\u2717 {c}</div>)}
+                        {m.pros.map((p,i) => <div key={i} style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#555', lineHeight:1.7 }}>{'\u2713'} {p}</div>)}
+                        {m.cons.map((c,i) => <div key={i} style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#bbb', lineHeight:1.7 }}>{'\u2717'} {c}</div>)}
                       </div>
                     ))}
                   </div>
@@ -2942,23 +2942,48 @@ export default function App() {
                         opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.5+i*0.3}s forwards` }}>{t}</div>
                     ))}
                     <div style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#22c55e', fontWeight:500, marginTop:4,
-                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.2s forwards` }}>\u2713 One continuous reading \u00b7 Correct DOM order</div>
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.2s forwards` }}>{'\u2713'} One continuous reading {'\u00b7'} Correct DOM order</div>
                   </div>
                 );
 
-                case 'pyramid': return (
-                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(6px,0.8vw,10px)', justifyContent:'flex-end', height:'100%' }}>
-                    {demoPyramidRow('Animation','45%','#a78bfa',1.2)}
-                    {demoPyramidRow('Effects','55%','#818cf8',1.0)}
-                    {demoPyramidRow('Layout','68%','#6366f1',0.8)}
-                    {demoPyramidRow('Text Style','82%','#4f46e5',0.6)}
-                    {demoPyramidRow('Semantic Wrapper','100%','#3730a3',0.4)}
-                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:4, opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.6s forwards` }}>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', color:'#3730a3', fontWeight:600 }}>\u2191 Most Critical</span>
-                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', color:'#a78bfa' }}>Nice to Have \u2191</span>
+                case 'pyramid': {
+                  const layers = [
+                    { n:1, label:'Wrapper', color:'#3730a3' },
+                    { n:2, label:'Text Style', color:'#4f46e5' },
+                    { n:3, label:'Layout', color:'#6366f1' },
+                    { n:4, label:'Effects', color:'#818cf8' },
+                    { n:5, label:'Animation', color:'#a78bfa' },
+                  ];
+                  return (
+                    <div style={{ display:'flex', flexDirection:'column', justifyContent:'center', height:'100%', gap:'clamp(10px,1.2vw,16px)' }}>
+                      <div style={{ display:'flex', alignItems:'center', width:'100%' }}>
+                        {layers.map((l,i) => (
+                          <div key={i} style={{ flex:1, display:'flex', alignItems:'center', opacity:0, animation:`pdFadeIn 0.5s ${ease} ${0.3+i*0.2}s forwards` }}>
+                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative', zIndex:2 }}>
+                              <div style={{ width:'clamp(28px,3vw,40px)', height:'clamp(28px,3vw,40px)', borderRadius:'50%', background:l.color,
+                                display:'flex', alignItems:'center', justifyContent:'center',
+                                fontSize:'clamp(11px,1.2vw,15px)', fontWeight:700, color:'#fff',
+                                boxShadow:`0 0 0 3px #F0F0F0, 0 0 0 5px ${l.color}40` }}>
+                                {l.n}
+                              </div>
+                              <div style={{ fontSize:'clamp(8px,0.75vw,10px)', fontWeight:600, color:l.color, marginTop:6,
+                                textAlign:'center', whiteSpace:'nowrap', letterSpacing:'0.02em' }}>{l.label}</div>
+                            </div>
+                            {i < layers.length - 1 && (
+                              <div style={{ flex:1, height:2, background:`linear-gradient(90deg, ${l.color}, ${layers[i+1].color})`,
+                                marginTop: -18,
+                                opacity:0, animation:`pdSlideRight 0.4s ${ease} ${0.5+i*0.2}s forwards` }} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display:'flex', justifyContent:'space-between', opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.6s forwards` }}>
+                        <span style={{ fontSize:'clamp(8px,0.7vw,10px)', color:'#3730a3', fontWeight:600 }}>{'\u2190'} Most Critical</span>
+                        <span style={{ fontSize:'clamp(8px,0.7vw,10px)', color:'#a78bfa' }}>Nice to Have {'\u2192'}</span>
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
+                }
 
                 case 'wrapper': return (
                   <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', height:'100%' }}>
@@ -2972,7 +2997,7 @@ export default function App() {
                       ))}
                     </div>
                     <div style={{ textAlign:'center', fontSize:'clamp(9px,0.9vw,12px)', color:'#16a34a', fontWeight:600,
-                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.3s forwards` }}>Single semantic unit \u2713</div>
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.3s forwards` }}>Single semantic unit {'\u2713'}</div>
                   </div>
                 );
 
@@ -3061,7 +3086,7 @@ export default function App() {
                       <div key={i} style={{ display:'flex', alignItems:'center', gap:8,
                         opacity:0, animation:`pdSlideRight 0.4s ${ease} ${0.3+i*0.15}s forwards` }}>
                         <div style={{ width:'clamp(14px,1.5vw,20px)', height:'clamp(14px,1.5vw,20px)', background:'#e5e7eb', borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center',
-                          fontSize:'clamp(8px,0.8vw,10px)', color:'#999', cursor:'grab' }}>\u2630</div>
+                          fontSize:'clamp(8px,0.8vw,10px)', color:'#999', cursor:'grab' }}>{'\u2630'}</div>
                         <div style={{ flex:1, background:'#fff', border:'1px solid #e5e7eb', borderRadius:4, padding:'4px 8px',
                           fontSize:'clamp(10px,1vw,13px)', color:'#333' }}>{['SALE','New Collection','Shop Now'][i]}</div>
                         <div style={{ fontSize:'clamp(8px,0.8vw,10px)', color:'#999', fontFamily:mono }}>#{i+1}</div>
@@ -3124,7 +3149,7 @@ export default function App() {
                     ))}
                     <div style={{ marginTop:4, background:'#f8fafc', borderRadius:6, padding:'6px 10px',
                       fontSize:'clamp(9px,0.9vw,12px)', fontFamily:mono, color:'#666',
-                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1s forwards` }}>Code copied to clipboard \u2713</div>
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1s forwards` }}>Code copied to clipboard {'\u2713'}</div>
                   </div>
                 );
 
@@ -3166,8 +3191,8 @@ export default function App() {
                       opacity:0, animation:`pdFadeIn 0.6s ${ease} 0.4s forwards`,
                     }}>{slide.chapterTitle}</div>
                   </div>
-                  <div style={{ flex:1, display:'flex', gap:'clamp(24px, 3vw, 48px)' }}>
-                    <div style={{ flex:'0 0 35%', display:'flex', alignItems:'flex-start' }}>
+                  <div style={{ flex:1, display:'flex', gap:'clamp(20px, 2.5vw, 40px)' }}>
+                    <div style={{ flex:'0 0 28%', display:'flex', alignItems:'flex-start' }}>
                       <div style={{
                         fontSize:'clamp(14px, 1.5vw, 20px)', fontWeight:400, color:'#333',
                         lineHeight:1.55, letterSpacing:'0.005em',
