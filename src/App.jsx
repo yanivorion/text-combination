@@ -908,7 +908,7 @@ export default function App() {
     { type:'chapter', num:4, title:'Our Approach',
       summary:'A new designated component with 2 output alternatives: HTML Mode or SVG Mode.' },
     { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'New Designated Component',
-      body:'This is not regular text components grouped together. It\u2019s a new custom component with a new experience. Content is edited in a panel\u2014not on the canvas. The DOM order stays correct at all times, and screen readers read the composition as a single semantic unit.',
+      body:'This is not regular text components grouped together. It\u2019s a new designated component with a new experience. Content is edited in a panel, not on the canvas. The DOM order stays correct at all times, and screen readers read the composition as a single semantic unit.',
       demo:'custom' },
     { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'HTML Mode',
       body:'Full SEO value with direct heading weight. Native accessibility\u2014no workarounds. Text selection works. Structure: a semantic wrapper tag (<h1>\u2013<h6> or <p>) with <span> children. Best for headlines, SEO-critical content, and body text. Simpler structure, fewer moving parts.',
