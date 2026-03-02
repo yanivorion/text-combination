@@ -885,14 +885,14 @@ export default function App() {
 
     // ── Ch 1: User Intent ───────────────────────────────────────────────────
     { type:'chapter', num:1, title:'User Intent',
-      summary:'A bundle of styled text components that together create a single visual composition\u2014like a designed sticker.' },
+      summary:'A bundle of styled text components that together create a single visual composition, like a designed sticker.' },
     { type:'content', chapterNum:1, chapterTitle:'User Intent', section:'What',
       body:'A text combination is a bundle of styled text components that together form a single visual composition\u2014like a designed sticker. Users want an editable, pre-designed element they can drop on their site: creative, impressive, and easy to customize.',
       demo:'definition' },
 
     // ── Ch 2: The Problem ───────────────────────────────────────────────────
     { type:'chapter', num:2, title:'The Problem',
-      summary:'Each text component has its own HTML tag\u2014reading order, semantics, and accessibility are broken for screen readers and search engines.' },
+      summary:'Each text component has its own HTML tag. Reading order, semantics, and accessibility are broken for screen readers and search engines.' },
     { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'Semantics, Accessibility and Reading Order',
       body:'Multiple independent heading tags confuse Google\u2019s hierarchy. A composition of H1 + H2 + H3 is treated as three separate headings, not one combined message. Screen readers announce disconnected fragments with no defined reading order. The accessibility team blocks shipping in the current form\u2014a proper HTML solution is required before release.',
       demo:'seo' },
@@ -922,7 +922,7 @@ export default function App() {
 
     // ── Ch 5: The Solution \u2014 Bottom to Top ──────────────────────────────────
     { type:'chapter', num:5, title:'The Solution',
-      summary:'A bottom-to-top approach\u2014tackling the most critical structural challenge first, then layering style, layout, effects, and animation on top.' },
+      summary:'A bottom-to-top approach. Tackling the most critical structural challenge first, then layering style, layout, effects, and animation on top.' },
     { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Priority',
       body:'We build from the foundation up. Each layer is less critical than the one below it\u2014but together they create the complete experience. The semantic wrapper is non-negotiable; animations are nice-to-have.',
       demo:'pyramid' },
@@ -944,7 +944,7 @@ export default function App() {
 
     // ── Ch 6: The Flow ──────────────────────────────────────────────────────
     { type:'chapter', num:6, title:'The Flow',
-      summary:'End-to-end: from selecting a preset to a fully styled, animated, accessible text combination\u2014every step in the creation process.' },
+      summary:'End-to-end: from selecting a preset to a fully styled, animated, accessible text combination. Every step in the creation process.' },
     { type:'content', chapterNum:6, chapterTitle:'The Flow', section:'Step 1 \u2014 Choose Preset',
       body:'Open the presets gallery with 30+ ready-made text combinations. Each preset carries fonts, colors, effects, and layout. Click to instantly apply\u2014the composition appears on the canvas ready to customize.',
       demo:'flow-preset' },
