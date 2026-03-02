@@ -3197,7 +3197,73 @@ export default function App() {
                       }}>{slide.body}</div>
                     </div>
                     <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {['style','layout','effects','animation','wrapper','custom','html','svg','screenreader',
+                      {(slide.demo === 'html' || slide.demo === 'svg') ? (
+                        <div style={{ display:'flex', gap:'clamp(12px,1.5vw,20px)', width:'100%', height:'100%' }}>
+                          <div style={{ flex:'0 0 38%', display:'flex', flexDirection:'column', justifyContent:'center',
+                            opacity:0, animation:`pdFadeIn 0.7s ${ease} 0.3s forwards` }}>
+                            {slide.demo === 'html' ? (
+                              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'clamp(4px,0.5vw,8px)' }}>
+                                <div style={{ background:'#fff', borderRadius:12, padding:'clamp(16px,2vw,32px)', boxShadow:'0 2px 16px rgba(0,0,0,0.06)',
+                                  border:'1px solid rgba(0,0,0,0.06)', width:'100%', textAlign:'center' }}>
+                                  <div style={{ fontSize:'clamp(28px,3.5vw,52px)', fontWeight:800, color:'#18181b', textTransform:'uppercase',
+                                    letterSpacing:'0.04em', lineHeight:0.95 }}>SALE</div>
+                                  <div style={{ fontSize:'clamp(14px,1.6vw,22px)', fontWeight:300, color:'#71717a', fontStyle:'italic',
+                                    marginTop:'clamp(4px,0.5vw,8px)' }}>New Collection</div>
+                                  <div style={{ fontSize:'clamp(8px,0.7vw,10px)', fontWeight:600, color:'#a1a1aa', textTransform:'uppercase',
+                                    letterSpacing:'0.12em', marginTop:'clamp(4px,0.5vw,6px)' }}>SHOP NOW</div>
+                                </div>
+                                <div style={{ fontSize:'clamp(8px,0.7vw,10px)', color:'#16a34a', fontWeight:600, marginTop:4,
+                                  display:'flex', gap:8, justifyContent:'center' }}>
+                                  <span>{'\u2713'} Selectable text</span>
+                                  <span>{'\u2713'} Native SEO</span>
+                                </div>
+                                <div style={{ marginTop:'clamp(8px,1vw,14px)', background:'#f8fafc', borderRadius:8, padding:'clamp(8px,1vw,14px)',
+                                  fontFamily:mono, fontSize:'clamp(8px,0.7vw,10px)', lineHeight:1.8, color:'#555', width:'100%' }}>
+                                  <div style={{ color:'#16a34a' }}>{'<h1>'}</div>
+                                  <div style={{ paddingLeft:12 }}>{'<span>'}SALE{'</span>'}</div>
+                                  <div style={{ paddingLeft:12 }}>{'<span>'}New Collection{'</span>'}</div>
+                                  <div style={{ paddingLeft:12 }}>{'<span>'}SHOP NOW{'</span>'}</div>
+                                  <div style={{ color:'#16a34a' }}>{'</h1>'}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'clamp(4px,0.5vw,8px)' }}>
+                                <div style={{ background:'#0a0a0a', borderRadius:12, padding:'clamp(16px,2vw,32px)', boxShadow:'0 2px 16px rgba(0,0,0,0.2)',
+                                  width:'100%', textAlign:'center' }}>
+                                  <div style={{ fontSize:'clamp(28px,3.5vw,52px)', fontWeight:800,
+                                    background:'linear-gradient(135deg, #a78bfa, #ec4899, #f59e0b)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                                    textTransform:'uppercase', letterSpacing:'0.04em', lineHeight:0.95 }}>NEON</div>
+                                  <div style={{ fontSize:'clamp(12px,1.4vw,18px)', fontWeight:300, color:'#a1a1aa',
+                                    marginTop:'clamp(4px,0.5vw,8px)' }}>Gradient Fills</div>
+                                  <div style={{ fontSize:'clamp(8px,0.7vw,10px)', fontWeight:600, color:'#525252', textTransform:'uppercase',
+                                    letterSpacing:'0.12em', marginTop:'clamp(4px,0.5vw,6px)' }}>PIXEL PERFECT</div>
+                                </div>
+                                <div style={{ fontSize:'clamp(8px,0.7vw,10px)', color:'#7c3aed', fontWeight:600, marginTop:4,
+                                  display:'flex', gap:8, justifyContent:'center' }}>
+                                  <span>{'\u2713'} Gradients</span>
+                                  <span>{'\u2713'} SVG filters</span>
+                                </div>
+                                <div style={{ marginTop:'clamp(8px,1vw,14px)', background:'#f8fafc', borderRadius:8, padding:'clamp(8px,1vw,14px)',
+                                  fontFamily:mono, fontSize:'clamp(8px,0.7vw,10px)', lineHeight:1.8, color:'#555', width:'100%' }}>
+                                  <div style={{ color:'#7c3aed' }}>{'<h1 class="sr-only">'}...{'</h1>'}</div>
+                                  <div style={{ color:'#3b82f6' }}>{'<svg aria-hidden="true">'}</div>
+                                  <div style={{ paddingLeft:12 }}>{'<text fill="url(#grad)">'}NEON{'</text>'}</div>
+                                  <div style={{ paddingLeft:12 }}>{'<text>'}Gradient Fills{'</text>'}</div>
+                                  <div style={{ color:'#3b82f6' }}>{'</svg>'}</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ flex:1, borderRadius:10, overflow:'hidden', border:'1px solid rgba(0,0,0,0.08)',
+                            opacity:0, animation:`pdScale 0.6s ${ease} 0.5s forwards` }}>
+                            <iframe
+                              src={`${window.location.origin}${window.location.pathname}?demo=${slide.demo}`}
+                              style={{ width:'100%', height:'100%', border:'none', borderRadius:10 }}
+                              title={`Demo: ${slide.demo}`}
+                            />
+                          </div>
+                        </div>
+                      ) : ['style','layout','effects','animation','wrapper','custom','screenreader',
                         'flow-preset','flow-edit','flow-style','flow-effects','flow-publish'].includes(slide.demo) ? (
                         <div style={{ width:'100%', height:'100%', borderRadius:10, overflow:'hidden', border:'1px solid rgba(0,0,0,0.08)',
                           opacity:0, animation:`pdScale 0.6s ${ease} 0.4s forwards` }}>
