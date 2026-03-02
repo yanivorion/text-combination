@@ -3278,8 +3278,8 @@ export default function App() {
                   }}>
                     <div style={{
                       fontSize:'clamp(16px, 2vw, 26px)', fontWeight:400, color:'rgba(255,255,255,0.85)',
-                      lineHeight:1.5, textAlign:'center', maxWidth:'65%', letterSpacing:'0.005em',
-                      margin:'0 auto',
+                      lineHeight:1.5, textAlign:'center', maxWidth:600, letterSpacing:'0.005em',
+                      margin:'0 auto', textWrap:'balance',
                       opacity:0, animation:'pdFadeIn 1s cubic-bezier(0.22,1,0.36,1) 0.5s forwards',
                     }}>{slide.summary}</div>
                   </div>
