@@ -2,6 +2,50 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { Sortable } from '@shopify/draggable';
 
+// ─── Persistence helpers ────────────────────────────────────────────────────────
+const LS_KEY = 'tc_creations';
+const SAVE_FIELDS = ['segs','segCount','mode','bgColor','gTag','gDir','gAlign','gGap','gPad','gWrap','gTrigger','gPreset','gDur','gStagger','gDelay','gEase'];
+const API = '/api/creations';
+
+const lsCache  = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } };
+const lsSync   = (list) => { try { localStorage.setItem(LS_KEY, JSON.stringify(list)); } catch {} };
+
+const api = async (method, opts = {}) => {
+  try {
+    const { id, body } = opts;
+    const url = id ? `${API}?id=${id}` : API;
+    const res = await fetch(url, {
+      method,
+      ...(body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const list = await res.json();
+    lsSync(list);
+    return list;
+  } catch {
+    return null;
+  }
+};
+
+const cloudRead   = ()             => api('GET');
+const cloudSave   = (name, snap)   => api('POST',   { body: { name, snap } });
+const cloudDel    = (id)           => api('DELETE',  { id });
+const cloudRename = (id, name)     => api('PATCH',  { id, body: { name } });
+const cloudPut    = (list)         => api('PUT',     { body: list });
+
+const stateToSnap = (g) => {
+  const o = {};
+  SAVE_FIELDS.forEach(k => { o[k] = g[k]; });
+  return o;
+};
+
+const snapEncode = (snap) => {
+  try { return btoa(encodeURIComponent(JSON.stringify(snap))); } catch { return ''; }
+};
+const snapDecode = (str) => {
+  try { return JSON.parse(decodeURIComponent(atob(str))); } catch { return null; }
+};
+
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const FONT_GROUPS = {
   Serif:      ['Playfair Display','Cormorant Garamond','DM Serif Display','Libre Baskerville','Cinzel','EB Garamond','Lora'],
@@ -625,6 +669,13 @@ export default function App() {
   const [canvasSel,setCanvasSel]= useState(null);
   const [layerPos, setLayerPos] = useState({ x:12, y:12 });
   const [dragRot,  setDragRot]  = useState(false);
+  const [creationsOpen, setCreationsOpen] = useState(false);
+  const [creations, setCreations] = useState(lsCache);
+  const [saveToast, setSaveToast] = useState('');
+  const [cloudReady, setCloudReady] = useState(false);
+  const [presentMode, setPresentMode] = useState(false);
+  const [presentSlide, setPresentSlide] = useState(0);
+  const fileInputRef = useRef(null);
   const layerRef = useRef(null);
   const sortableRef = useRef(null);
 
@@ -675,6 +726,98 @@ export default function App() {
     setGGap(preset.gap !== undefined ? preset.gap : 16);
   };
 
+  // ── Save / Load / Share helpers ────────────────────────────────────────────
+  const getSnap = () => stateToSnap({ segs, segCount, mode, bgColor, gTag, gDir, gAlign, gGap, gPad, gWrap, gTrigger, gPreset, gDur, gStagger, gDelay, gEase });
+
+  const restoreSnap = (snap) => {
+    if (!snap) return;
+    if (snap.segs) { const ns = snap.segs.slice(); while (ns.length < 4) ns.push(mkSeg(ns.length + 1)); setSegs(ns); }
+    if (snap.segCount != null) setSegCount(snap.segCount);
+    if (snap.mode)     setMode(snap.mode);
+    if (snap.bgColor)  setBgColor(snap.bgColor);
+    if (snap.gTag)     setGTag(snap.gTag);
+    if (snap.gDir)     setGDir(snap.gDir);
+    if (snap.gAlign)   setGAlign(snap.gAlign);
+    if (snap.gGap != null) setGGap(snap.gGap);
+    if (snap.gPad != null) setGPad(snap.gPad);
+    if (snap.gWrap != null) setGWrap(snap.gWrap);
+    if (snap.gTrigger) setGTrigger(snap.gTrigger);
+    if (snap.gPreset)  setGPreset(snap.gPreset);
+    if (snap.gDur != null)     setGDur(snap.gDur);
+    if (snap.gStagger != null) setGStagger(snap.gStagger);
+    if (snap.gDelay != null)   setGDelay(snap.gDelay);
+    if (snap.gEase)    setGEase(snap.gEase);
+    setActiveSeg(0);
+    setCanvasSel(null);
+  };
+
+  const handleSave = async () => {
+    const name = prompt('Name your creation:');
+    if (!name) return;
+    const snap = getSnap();
+    const list = await cloudSave(name.trim(), snap);
+    if (list) { setCreations(list); setSaveToast('Saved!'); }
+    else setSaveToast('Save failed');
+    setTimeout(() => setSaveToast(''), 2000);
+  };
+
+  const handleShare = () => {
+    const encoded = snapEncode(getSnap());
+    const url = `${window.location.origin}${window.location.pathname}#creation=${encoded}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setSaveToast('Share link copied!');
+      setTimeout(() => setSaveToast(''), 2500);
+    });
+  };
+
+  const handleExport = () => {
+    const snap = getSnap();
+    const blob = new Blob([JSON.stringify(snap, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `text-combination-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const snap = JSON.parse(ev.target.result);
+        restoreSnap(snap);
+        setSaveToast('Imported!');
+        setTimeout(() => setSaveToast(''), 2000);
+      } catch { setSaveToast('Invalid file'); setTimeout(() => setSaveToast(''), 2000); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#creation=')) {
+      const snap = snapDecode(hash.slice('#creation='.length));
+      if (snap) { restoreSnap(snap); window.history.replaceState(null, '', window.location.pathname); }
+    }
+  }, []);
+
+  useEffect(() => {
+    cloudRead().then(async (cloud) => {
+      if (cloud) {
+        const local = lsCache();
+        if (local.length && !cloud.length) {
+          const migrated = await cloudPut(local);
+          if (migrated) { setCreations(migrated); setCloudReady(true); return; }
+        }
+        setCreations(cloud);
+      }
+      setCloudReady(true);
+    });
+  }, []);
+
   // ── Tour spotlight ─────────────────────────────────────────────────────────
   const accBeforeTour = useRef(null);
   useEffect(() => {
@@ -699,6 +842,116 @@ export default function App() {
     window.addEventListener('resize', onResize);
     return () => { clearTimeout(t); window.removeEventListener('resize', onResize); };
   }, [tourStep]);
+
+  // ── Presentation mode ──────────────────────────────────────────────────────
+  const PRESENT_SLIDES = [
+    { type:'cover' },
+    { type:'agenda' },
+
+    // ── Ch 1: User Intent ───────────────────────────────────────────────────
+    { type:'chapter', num:1, title:'User Intent',
+      summary:'A bundle of styled text components that together create a single visual composition\u2014like a designed sticker.' },
+    { type:'content', chapterNum:1, chapterTitle:'User Intent', section:'What',
+      body:'A text combination is a bundle of styled text components that together form a single visual composition\u2014like a designed sticker. Users want an editable, pre-designed element they can drop on their site: creative, impressive, and easy to customize.',
+      demo:'definition' },
+    { type:'content', chapterNum:1, chapterTitle:'User Intent', section:'Who',
+      body:'Non-designer DIY users, small business owners, and creative professionals. They want professional-looking results without typography knowledge\u2014compositions like \u201cSALE / New Collection\u201d or \u201cCOMING SOON\u201d that just work.',
+      demo:'audience' },
+
+    // ── Ch 2: The Problem ───────────────────────────────────────────────────
+    { type:'chapter', num:2, title:'The Problem',
+      summary:'Each text component has its own HTML tag\u2014reading order, semantics, and accessibility are broken for screen readers and search engines.' },
+    { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'SEO',
+      body:'Multiple independent heading tags confuse Google\u2019s hierarchy. A composition of H1 + H2 + H3 is treated as three separate headings, not one combined message. Screen readers announce disconnected fragments with no defined reading order.',
+      demo:'seo' },
+    { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'Blocked',
+      body:'The accessibility team blocks shipping in the current form. A proper HTML solution is required before release. Solve the HTML structure\u2014and we unlock a high-demand feature that competitors already offer and users are asking for.',
+      demo:'blocker' },
+
+    // ── Ch 3: Why Now? ──────────────────────────────────────────────────────
+    { type:'chapter', num:3, title:'Why Now?',
+      summary:'Canva, Adobe Express, and Figma Sites already offer text compositions. Users are asking for this. We need to close the gap.' },
+    { type:'content', chapterNum:3, chapterTitle:'Why Now?', section:'Market',
+      body:'Canva offers premade text combination presets via grouped elements. Adobe Express ships styled compositions with a rich preset library. Figma is moving into web building where text styling is a key differentiator.',
+      demo:'competitors' },
+    { type:'content', chapterNum:3, chapterTitle:'Why Now?', section:'Value',
+      body:'Sticker-style compositions are one of the most requested visual elements from DIY users. Text combinations enrich Wix\u2019s template library\u2014a direct acquisition driver. This closes the gap between what professionals can do in Photoshop and what Wix can offer.',
+      demo:'value' },
+
+    // ── Ch 4: Our Approach ──────────────────────────────────────────────────
+    { type:'chapter', num:4, title:'Our Approach',
+      summary:'A new custom component\u2014not grouped text elements\u2014with two alternative rendering paths: HTML Mode or SVG Mode.' },
+    { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'Custom Component',
+      body:'This is not regular text components grouped together. It\u2019s a new custom component with a new experience. Content is edited in a panel\u2014not on the canvas. The DOM order stays correct at all times, and screen readers read the composition as a single semantic unit.',
+      demo:'custom' },
+    { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'HTML Mode',
+      body:'Full SEO value with direct heading weight. Native accessibility\u2014no workarounds. Text selection works. Structure: a semantic wrapper tag (<h1>\u2013<h6> or <p>) with <span> children. Best for headlines, SEO-critical content, and body text. Simpler structure, fewer moving parts.',
+      demo:'html' },
+    { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'SVG Mode',
+      body:'Gradient text fills, pixel-perfect positioning, native SVG stroke, and SVG filters (blur, glow, drop shadow). Structure: a hidden semantic tag for screen readers + decorative <svg aria-hidden>. Best for decorative stickers, branded visuals, and advanced effects.',
+      demo:'svg' },
+    { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'Comparison',
+      body:'These are two alternative approaches\u2014not co-existing modes. Each project chooses one. Rule of thumb: if users will read it \u2192 HTML Mode. If users will look at it \u2192 SVG Mode. Default to HTML for content; offer SVG for visual impact.',
+      demo:'compare' },
+    { type:'content', chapterNum:4, chapterTitle:'Our Approach', section:'Screen Reader',
+      body:'Both modes produce correct screen reader output. In HTML Mode, the semantic tag is read directly. In SVG Mode, an sr-only hidden tag carries the text while the SVG is marked aria-hidden. The result: one continuous reading, correct DOM order, proper heading hierarchy.',
+      demo:'screenreader' },
+
+    // ── Ch 5: The Solution \u2014 Bottom to Top ──────────────────────────────────
+    { type:'chapter', num:5, title:'The Solution',
+      summary:'A bottom-to-top approach\u2014tackling the most critical structural challenge first, then layering style, layout, effects, and animation on top.' },
+    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Priority',
+      body:'We build from the foundation up. Each layer is less critical than the one below it\u2014but together they create the complete experience. The semantic wrapper is non-negotiable; animations are nice-to-have.',
+      demo:'pyramid' },
+    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Layer 1 \u2014 Semantic Wrapper',
+      body:'The most critical layer. Multiple text segments wrapped under a single HTML tag (<h1>\u2013<h6>, <p>, or <span>). This solves the SEO hierarchy problem, gives screen readers a single semantic unit, and unblocks the accessibility review. Without this, nothing else ships.',
+      demo:'wrapper' },
+    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Layer 2 \u2014 Text Style',
+      body:'The foundation of every composition. Font family, font size (6\u2013400px), font weight (100\u2013900), color, letter-spacing (-0.05em to 0.3em), line-height (0.85\u20131.5), text case (upper, lower, title), decoration, italic, and rotation (-30\u00b0 to +30\u00b0).',
+      demo:'style' },
+    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Layer 3 \u2014 Layout',
+      body:'How segments arrange in space. Direction (row or column), alignment (start, center, end), base gap (0\u2013120px), per-segment gap overrides, padding (0\u2013200px), flex wrap, and individual segment offsets. The composition can reflow while maintaining its visual intent.',
+      demo:'layout' },
+    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Layer 4 \u2014 Effects',
+      body:'Visual polish that makes compositions stand out. Stroke outline (1\u20135px, hollow option), soft shadow, hard shadow, 3D extrude, neon glow, retro. Plus layering, text twist (wave, bounce, collage), badges with background, and SVG gradients (horizontal, vertical, diagonal).',
+      demo:'effects' },
+    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Layer 5 \u2014 Animation',
+      body:'The top layer\u2014we can live without it, but it elevates the experience. 8 presets: fade up/down/left/right, scale, blur, flip, slide. Three trigger modes: entrance, scroll, manual. Configurable duration (300\u20131200ms), stagger (50\u2013600ms), delay, and easing. Respects prefers-reduced-motion.',
+      demo:'animation' },
+
+    // ── Ch 6: The Flow ──────────────────────────────────────────────────────
+    { type:'chapter', num:6, title:'The Flow',
+      summary:'End-to-end: from selecting a preset to a fully styled, animated, accessible text combination\u2014every step in the creation process.' },
+    { type:'content', chapterNum:6, chapterTitle:'The Flow', section:'Step 1 \u2014 Choose Preset',
+      body:'Open the presets gallery with 30+ ready-made text combinations. Each preset carries fonts, colors, effects, and layout. Click to instantly apply\u2014the composition appears on the canvas ready to customize.',
+      demo:'flow-preset' },
+    { type:'content', chapterNum:6, chapterTitle:'The Flow', section:'Step 2 \u2014 Edit Content',
+      body:'Content is edited in the side panel\u2014not on the canvas. Each segment has its own text field. Add or remove segments with + and \u2212. Drag to reorder in the layers panel. The DOM order updates in real time.',
+      demo:'flow-edit' },
+    { type:'content', chapterNum:6, chapterTitle:'The Flow', section:'Step 3 \u2014 Style & Layout',
+      body:'Select a segment and style it: font, size, weight, color, spacing. Switch to the composition panel to adjust direction, alignment, gap, and padding. The live preview updates instantly on the canvas.',
+      demo:'flow-style' },
+    { type:'content', chapterNum:6, chapterTitle:'The Flow', section:'Step 4 \u2014 Effects & Animation',
+      body:'Apply effects: outline, shadow, 3D extrude, neon glow, retro. Add layering, text twist, or badges. Set up entrance animations with preset, duration, stagger, and easing. Hit replay to preview the full animation sequence.',
+      demo:'flow-effects' },
+    { type:'content', chapterNum:6, chapterTitle:'The Flow', section:'Step 5 \u2014 Publish',
+      body:'Audit accessibility\u2014check semantic tags, contrast ratios, screen reader output. Copy the generated code (HTML or SVG) with all styles inlined. Preview against different background colors. The composition is ready for production.',
+      demo:'flow-publish' },
+  ];
+  const presentNext = () => setPresentSlide(s => Math.min(s + 1, PRESENT_SLIDES.length - 1));
+  const presentPrev = () => setPresentSlide(s => Math.max(s - 1, 0));
+  const presentExit = () => { setPresentMode(false); setPresentSlide(0); };
+
+  useEffect(() => {
+    if (!presentMode) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') presentExit();
+      else if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); presentNext(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'Backspace') { e.preventDefault(); presentPrev(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [presentMode]);
 
   // ── Mount entrance ─────────────────────────────────────────────────────────
   useEffect(() => { const t = setTimeout(() => setReady(true), 60); return () => clearTimeout(t); }, []);
@@ -737,6 +990,13 @@ export default function App() {
       [data-uid="${uid}"] .draggable-source--is-dragging {
         opacity: 0.3;
       }
+      @keyframes pdSlideUp { from { opacity:0; transform:translateY(40px) } to { opacity:1; transform:none } }
+      @keyframes pdFadeIn { from { opacity:0 } to { opacity:1 } }
+      @keyframes pdSlideRight { from { opacity:0; transform:translateX(-30px) } to { opacity:1; transform:none } }
+      @keyframes pdScale { from { opacity:0; transform:scale(0.85) } to { opacity:1; transform:none } }
+      @keyframes pdPulse { 0%,100% { opacity:0.35 } 50% { opacity:1 } }
+      @keyframes pdDraw { from { stroke-dashoffset:200 } to { stroke-dashoffset:0 } }
+      @keyframes pdBlink { 0%,100% { opacity:1 } 50% { opacity:0 } }
     `;
     document.head.appendChild(style);
     return () => { try { document.head.removeChild(style); } catch(_){} };
@@ -947,6 +1207,7 @@ export default function App() {
       svgH=pos[pos.length-1].y+ss[ss.length-1].fontSize*0.3+pV;
     }
     const SemanticTag = gTag;
+    const scaleOf = (svgEl) => { if (!svgEl?.clientWidth) return 1; const vb = svgEl.viewBox?.baseVal; return vb?.width ? svgEl.clientWidth / vb.width : 1; };
     return (
       <div style={{ position:'relative', display:'inline-block' }}>
         <SemanticTag style={{ position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0,fontSize:1 }}>
@@ -980,13 +1241,67 @@ export default function App() {
             let badge = null;
             if (seg.badge) {
               const parts=seg.badgePadding.split(' ');
-              const pv=parseFloat(parts[0]), ph2=parseFloat(parts[1]||parts[0]);
-              badge = <rect x={p.x-ph2} y={p.y-meas[i].h*0.82-pv} width={meas[i].w+ph2*2} height={meas[i].h+pv*2} rx={parseFloat(seg.badgeRadius)} fill={seg.badgeColor}/>;
+              const pv2=parseFloat(parts[0]), ph2=parseFloat(parts[1]||parts[0]);
+              badge = <rect x={p.x-ph2} y={p.y-meas[i].h*0.82-pv2} width={meas[i].w+ph2*2} height={meas[i].h+pv2*2} rx={parseFloat(seg.badgeRadius)} fill={seg.badgeColor}/>;
             }
             const ox = seg.offsetX || 0, oy = seg.offsetY || 0;
+            const isSel = canvasSel === i;
+            const isLast = i === ss.length - 1;
+            const gap = getGap(i);
+            const bb = seg.badge ? (() => {
+              const pts = seg.badgePadding.split(' ');
+              const bpv = parseFloat(pts[0]), bph = parseFloat(pts[1] || pts[0]);
+              return { x: p.x - bph - 2, y: p.y - meas[i].h * 0.82 - bpv - 2, w: meas[i].w + bph * 2 + 4, h: meas[i].h + bpv * 2 + 4 };
+            })() : { x: p.x - 3, y: p.y - meas[i].h - 2, w: meas[i].w + 6, h: meas[i].h * 1.2 + 4 };
             return (
-              <g key={i} className="tc-seg" style={{ display:'inline-block' }}
-                transform={(ox || oy) ? `translate(${ox},${oy})` : undefined}>
+              <g key={i} className="tc-seg" style={{ cursor: isSel ? 'grab' : 'pointer' }}
+                transform={(ox || oy) ? `translate(${ox},${oy})` : undefined}
+                onClick={(e) => { e.stopPropagation(); setCanvasSel(i); setActiveSeg(i); }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  if (seg.offsetX || seg.offsetY) {
+                    setSegs(prev => { const n=[...prev]; n[i]={...n[i], offsetX:0, offsetY:0}; return n; });
+                  }
+                }}
+                onMouseDown={(e) => {
+                  if (canvasSel !== i) return;
+                  if (e.target.closest('[data-handle]')) return;
+                  e.preventDefault();
+                  const gEl = e.currentTarget;
+                  const sc = scaleOf(gEl.ownerSVGElement);
+                  const startX = e.clientX, startY = e.clientY;
+                  const origOX = seg.offsetX || 0, origOY = seg.offsetY || 0;
+                  let moved = false, fdx = 0, fdy = 0;
+                  document.body.style.cursor = 'grabbing';
+                  const onMove = (ev) => {
+                    const pxDx = ev.clientX - startX, pxDy = ev.clientY - startY;
+                    if (!moved && Math.abs(pxDx) < 2 && Math.abs(pxDy) < 2) return;
+                    moved = true;
+                    fdx = pxDx / sc; fdy = pxDy / sc;
+                    gEl.setAttribute('transform', `translate(${origOX + fdx},${origOY + fdy})`);
+                  };
+                  const onUp = () => {
+                    document.body.style.cursor = '';
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    if (moved) {
+                      setSegs(prev => {
+                        const n = [...prev];
+                        n[i] = { ...n[i], offsetX: Math.round(origOX + fdx), offsetY: Math.round(origOY + fdy) };
+                        return n;
+                      });
+                    }
+                  };
+                  document.addEventListener('mousemove', onMove);
+                  document.addEventListener('mouseup', onUp);
+                }}
+              >
+                {isSel && (
+                  <rect x={bb.x} y={bb.y} width={bb.w} height={bb.h}
+                    fill="none" stroke={T.accent} strokeWidth={2} rx={4}
+                    style={{ pointerEvents:'none' }}
+                  />
+                )}
                 {badge}
                 <text x={p.x} y={p.y} fill={fill}
                   stroke={hasStroke?seg.strokeColor:'none'}
@@ -1000,6 +1315,103 @@ export default function App() {
                   filter={hasFilt?`url(#${uid}f${i})`:undefined}
                   transform={seg.rotation?`rotate(${seg.rotation} ${p.x} ${p.y})`:undefined}
                 >{meas[i].d}</text>
+                {isSel && (
+                  <g data-handle="rotate" style={{ cursor:'grab' }}
+                    onMouseDown={(e) => {
+                      e.preventDefault(); e.stopPropagation();
+                      const gEl = e.currentTarget.parentElement;
+                      const textEl = gEl.querySelector('text');
+                      const rect = textEl.getBoundingClientRect();
+                      const ccx = rect.left + rect.width / 2, ccy = rect.top + rect.height / 2;
+                      let finalAngle = seg.rotation || 0;
+                      document.body.style.cursor = 'grabbing';
+                      const onMove = (ev) => {
+                        finalAngle = Math.round(Math.atan2(ev.clientY - ccy, ev.clientX - ccx) * (180 / Math.PI));
+                        textEl.setAttribute('transform', `rotate(${finalAngle} ${p.x} ${p.y})`);
+                      };
+                      const onUp = () => {
+                        document.body.style.cursor = '';
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onUp);
+                        upd('rotation', finalAngle);
+                      };
+                      document.addEventListener('mousemove', onMove);
+                      document.addEventListener('mouseup', onUp);
+                    }}
+                  >
+                    <circle cx={bb.x + bb.w} cy={bb.y} r={8} fill={T.accent} stroke="#fff" strokeWidth={2}/>
+                    <svg x={bb.x + bb.w - 4} y={bb.y - 4} width={8} height={8} viewBox="0 0 10 10" overflow="visible">
+                      <path d="M7 1.5A4 4 0 1 1 3 1.5" fill="none" stroke="#fff" strokeWidth={1.5} strokeLinecap="round"/>
+                      <path d="M7 1.5L5.5 0M7 1.5L8.5 0" fill="none" stroke="#fff" strokeWidth={1.5} strokeLinecap="round"/>
+                    </svg>
+                  </g>
+                )}
+                {isSel && (seg.offsetX !== 0 || seg.offsetY !== 0) && (
+                  <g data-handle="reset" style={{ cursor:'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSegs(prev => { const n=[...prev]; n[i]={...n[i], offsetX:0, offsetY:0}; return n; });
+                    }}
+                  >
+                    <circle cx={bb.x} cy={bb.y} r={8} fill="#ef4444" stroke="#fff" strokeWidth={2}/>
+                    <svg x={bb.x - 3.5} y={bb.y - 3.5} width={7} height={7} viewBox="0 0 10 10" overflow="visible">
+                      <line x1="2.5" y1="2.5" x2="7.5" y2="7.5" stroke="#fff" strokeWidth={1.8} strokeLinecap="round"/>
+                      <line x1="7.5" y1="2.5" x2="2.5" y2="7.5" stroke="#fff" strokeWidth={1.8} strokeLinecap="round"/>
+                    </svg>
+                  </g>
+                )}
+                {isSel && !isLast && (() => {
+                  const ghx = gDir === 'column' ? bb.x + bb.w / 2 : bb.x + bb.w + gap / 2;
+                  const ghy = gDir === 'column' ? bb.y + bb.h + gap / 2 : bb.y + bb.h / 2;
+                  return (
+                    <g data-handle="gap" style={{ cursor: gDir === 'column' ? 'ns-resize' : 'ew-resize' }}
+                      onMouseDown={(e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        const svgEl = e.currentTarget.closest('svg');
+                        const sc = scaleOf(svgEl);
+                        const startPos = gDir === 'column' ? e.clientY : e.clientX;
+                        const startGap = getGap(i);
+                        const allGs = [...svgEl.querySelectorAll(':scope > g.tc-seg')];
+                        const origTfs = allGs.slice(i + 1).map(g => g.getAttribute('transform') || '');
+                        let finalGap = startGap;
+                        const onMove = (ev) => {
+                          const delta = ((gDir === 'column' ? ev.clientY : ev.clientX) - startPos) / sc;
+                          finalGap = Math.max(0, Math.round(startGap + delta));
+                          const diff = finalGap - startGap;
+                          allGs.slice(i + 1).forEach((g, j) => {
+                            const shift = gDir === 'column' ? `translate(0,${diff})` : `translate(${diff},0)`;
+                            g.setAttribute('transform', origTfs[j] ? `${origTfs[j]} ${shift}` : shift);
+                          });
+                        };
+                        const onUp = () => {
+                          document.removeEventListener('mousemove', onMove);
+                          document.removeEventListener('mouseup', onUp);
+                          setSegs(prev => {
+                            const n = [...prev];
+                            for (let j = 0; j < segCount; j++) {
+                              n[j] = { ...n[j], gapAfter: j === i ? finalGap : (n[j].gapAfter ?? gGap) };
+                            }
+                            return n;
+                          });
+                        };
+                        document.addEventListener('mousemove', onMove);
+                        document.addEventListener('mouseup', onUp);
+                      }}
+                    >
+                      <circle cx={ghx} cy={ghy} r={6} fill="rgba(255,255,255,0.9)" stroke={T.accent} strokeWidth={1.5}/>
+                      {gDir === 'column'
+                        ? <svg x={ghx - 3} y={ghy - 3} width={6} height={6} viewBox="0 0 6 6" overflow="visible">
+                            <line x1="0" y1="2" x2="6" y2="2" stroke={T.accent} strokeWidth={1}/>
+                            <line x1="0" y1="4" x2="6" y2="4" stroke={T.accent} strokeWidth={1}/>
+                          </svg>
+                        : <svg x={ghx - 3} y={ghy - 3} width={6} height={6} viewBox="0 0 6 6" overflow="visible">
+                            <line x1="2" y1="0" x2="2" y2="6" stroke={T.accent} strokeWidth={1}/>
+                            <line x1="4" y1="0" x2="4" y2="6" stroke={T.accent} strokeWidth={1}/>
+                          </svg>
+                      }
+                    </g>
+                  );
+                })()}
               </g>
             );
           })}
@@ -1223,6 +1635,10 @@ export default function App() {
   const IcoA11y   = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5}><circle cx="6" cy="2" r="1.2"/><path d="M2.5 4.5L6 5l3.5-.5M6 5v2.5M4 11l2-3.5 2 3.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
   const IcoPresets = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><rect x="1" y="1" width="4" height="4" rx="0.5"/><rect x="7" y="1" width="4" height="4" rx="0.5"/><rect x="1" y="7" width="4" height="4" rx="0.5"/><rect x="7" y="7" width="4" height="4" rx="0.5"/></svg>;
   const IcoTour = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><circle cx="6" cy="6" r="5"/><path d="M4.5 4.2a1.7 1.7 0 0 1 3.2.8c0 1.2-1.7 1-1.7 2.2"/><circle cx="6" cy="9.2" r="0.01" strokeWidth="2"/></svg>;
+  const IcoSave = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M2 1h6.6L10 2.4a1 1 0 0 1 .3.7V10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/><path d="M4 1v3h4V1"/><rect x="3" y="7" width="6" height="3" rx="0.5"/></svg>;
+  const IcoShare = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="2.5" r="1.5"/><circle cx="9" cy="9.5" r="1.5"/><circle cx="3" cy="6" r="1.5"/><line x1="4.4" y1="5.2" x2="7.6" y2="3.3"/><line x1="4.4" y1="6.8" x2="7.6" y2="8.7"/></svg>;
+  const IcoFolder = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M1 3V10a1 1 0 001 1h8a1 1 0 001-1V5a1 1 0 00-1-1H6L4.5 2.5A1 1 0 003.8 2H2A1 1 0 001 3z"/></svg>;
+  const IcoPresent = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1.5" width="10" height="7" rx="1"/><path d="M4 10.5h4M6 8.5v2"/><path d="M4.5 5L8 5M4.5 3.5L6.5 3.5"/></svg>;
 
   const A11yPanel = ({ segs: ss, segCount: cnt, gTag: tag, gDir: dir, gAlign: al, gGap: gap, gWrap: wrap, mode: m, dispText: dt, fxStyle: fx, segStyle: sst, genCode: gc }) => {
     const [activeTab, setActiveTab] = useState('tree');
@@ -1521,7 +1937,11 @@ export default function App() {
             { onClick:()=>setCodeOpen(o=>!o), icon:IcoCode, label:codeOpen?'Hide Code':'Code', dark:codeOpen, d:200 },
             { onClick:()=>setA11yOpen(o=>!o), icon:IcoA11y, label:a11yOpen?'Close A11y':'A11y', dark:a11yOpen, d:240 },
             { onClick:()=>setPresetsOpen(o=>!o), icon:IcoPresets, label:'Presets', dark:presetsOpen, d:280, tour:'presets-btn' },
-            { onClick:()=>setTourStep(0), icon:IcoTour, label:'Tour', dark:tourStep>=0, d:320 },
+            { onClick:handleSave, icon:IcoSave, label:'Save', dark:false, d:320 },
+            { onClick:handleShare, icon:IcoShare, label:'Share', dark:false, d:360 },
+            { onClick:()=>setCreationsOpen(o=>!o), icon:IcoFolder, label:'My Files', dark:creationsOpen, d:400 },
+            { onClick:()=>{ setPresentMode(true); setPresentSlide(0); }, icon:IcoPresent, label:'Present', dark:false, d:440 },
+            { onClick:()=>setTourStep(0), icon:IcoTour, label:'Tour', dark:tourStep>=0, d:480 },
           ].map((b,bi)=>(
             <div key={bi} data-tour={b.tour||undefined} style={enter('tcSlideL', b.d)}>
               <TBtn onClick={b.onClick} icon={b.icon} dark={b.dark}>{b.label}</TBtn>
@@ -1853,7 +2273,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ borderTop:`1px solid ${T.border}`, flexShrink:0, maxHeight:codeOpen?'42%':40, overflow:'hidden', transition:`max-height 350ms ${EASE.out}` }}>
+              <div style={{ borderTop:`1px solid ${T.border}`, flexShrink:0, maxHeight:codeOpen?'60%':40, overflow:'hidden', transition:`max-height 350ms ${EASE.out}` }}>
                 <button onClick={()=>setCodeOpen(o=>!o)}
                   style={{ display:'flex', alignItems:'center', gap:8, padding:'0 16px', height:40, cursor:'pointer', userSelect:'none', width:'100%', background:'none', border:'none', fontFamily:'inherit', transition:`background 300ms ${EASE.out}` }}
                   onMouseEnter={e=>e.currentTarget.style.background=T.accentSoft}
@@ -1866,7 +2286,7 @@ export default function App() {
                     <path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
-                <div style={{ padding:'10px 16px 16px', background:'rgba(0,0,0,0.02)', overflowY:'auto', maxHeight:'calc(42% - 40px)' }}>
+                <div style={{ padding:'10px 16px 16px', background:'rgba(0,0,0,0.02)', overflowY:'auto', maxHeight:'calc(60% - 40px)' }}>
                   <pre style={{ fontFamily:"'SF Mono','Fira Code',monospace", fontSize:10, lineHeight:1.7, color:T.text2, whiteSpace:'pre', overflowX:'auto', background:'rgba(255,255,255,0.4)', padding:12, borderRadius:8, border:`1px solid ${T.border}` }}>
                     {genCode()}
                   </pre>
@@ -1984,6 +2404,7 @@ export default function App() {
           background:'rgba(15,23,42,0.25)',
           backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)',
           display:'flex', alignItems:'center', justifyContent:'center',
+          fontFamily: sysFont,
         }}>
           <div onClick={e => e.stopPropagation()} style={{
             width:660, maxWidth:'92vw', maxHeight:'82vh',
@@ -2047,6 +2468,780 @@ export default function App() {
         document.body
       )}
 
+      {/* ── MY CREATIONS MODAL ── */}
+      {createPortal(
+        <div onClick={() => setCreationsOpen(false)} style={{
+          position:'fixed', inset:0, zIndex:900, display:'flex', alignItems:'center', justifyContent:'center',
+          background:'rgba(15,23,42,0.35)', backdropFilter:'blur(8px)', WebkitBackdropFilter:'blur(8px)',
+          opacity: creationsOpen?1:0, pointerEvents: creationsOpen?'auto':'none',
+          transition:`opacity 300ms ${EASE.out}`, fontFamily: sysFont,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width:540, maxHeight:'80vh', background:'rgba(255,255,255,0.97)',
+            backdropFilter:'blur(24px) saturate(140%)', WebkitBackdropFilter:'blur(24px) saturate(140%)',
+            borderRadius:16, boxShadow:'0 24px 64px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)',
+            border:`1px solid rgba(255,255,255,0.7)`, display:'flex', flexDirection:'column', overflow:'hidden',
+            transform: creationsOpen?'scale(1) translateY(0)':'scale(0.96) translateY(12px)',
+            transition:`transform 400ms ${EASE.spring}`,
+          }}>
+            <div style={{ display:'flex', alignItems:'center', padding:'12px 18px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
+              <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text1, flex:1 }}>My Creations</span>
+              <div style={{ display:'flex', gap:6, marginRight:12 }}>
+                <button onClick={handleExport} style={{
+                  height:24, padding:'0 10px', background:'none', border:`1px solid ${T.ctrlBorder}`, borderRadius:6,
+                  fontSize:9, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:T.text3,
+                  cursor:'pointer', fontFamily:'inherit', transition:`all 200ms ${EASE.out}`,
+                }} onMouseEnter={e => e.currentTarget.style.borderColor = T.accent} onMouseLeave={e => e.currentTarget.style.borderColor = T.ctrlBorder}
+                >Export JSON</button>
+                <button onClick={() => fileInputRef.current?.click()} style={{
+                  height:24, padding:'0 10px', background:'none', border:`1px solid ${T.ctrlBorder}`, borderRadius:6,
+                  fontSize:9, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase', color:T.text3,
+                  cursor:'pointer', fontFamily:'inherit', transition:`all 200ms ${EASE.out}`,
+                }} onMouseEnter={e => e.currentTarget.style.borderColor = T.accent} onMouseLeave={e => e.currentTarget.style.borderColor = T.ctrlBorder}
+                >Import JSON</button>
+              </div>
+              <button onClick={() => setCreationsOpen(false)} style={{
+                width:24, height:24, borderRadius:6, background:'none', border:`1px solid ${T.ctrlBorder}`,
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0,
+                transition:`all 200ms ${EASE.out}`,
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = T.accentSoft}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <svg width={8} height={8} viewBox="0 0 10 10" fill="none" stroke={T.text3} strokeWidth={1.5} strokeLinecap="round">
+                  <line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/>
+                </svg>
+              </button>
+            </div>
+            <div style={{ flex:1, overflowY:'auto', padding:16 }}>
+              {creations.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'40px 0', color:T.text3 }}>
+                  <div style={{ fontSize:32, marginBottom:10, opacity:0.4 }}>📂</div>
+                  <div style={{ fontSize:12, fontWeight:500 }}>No saved creations yet</div>
+                  <div style={{ fontSize:10, color:T.text4, marginTop:4 }}>Click "Save" in the toolbar to save your first design</div>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                  {creations.map(c => (
+                    <div key={c.id} style={{
+                      display:'flex', alignItems:'center', gap:10, padding:'10px 14px',
+                      background:'rgba(255,255,255,0.55)', border:`1px solid ${T.ctrlBorder}`,
+                      borderRadius:10, transition:`all 200ms ${EASE.out}`, cursor:'pointer',
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = T.accent; e.currentTarget.style.background = 'rgba(255,255,255,0.95)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = T.ctrlBorder; e.currentTarget.style.background = 'rgba(255,255,255,0.55)'; }}
+                      onClick={() => { restoreSnap(c.snap); setCreationsOpen(false); setSaveToast('Loaded!'); setTimeout(() => setSaveToast(''), 2000); }}
+                    >
+                      <div style={{ width:60, height:32, display:'flex', alignItems:'center', justifyContent:'center', gap:2, overflow:'hidden', flexShrink:0, borderRadius:6, background:'rgba(0,0,0,0.02)', border:`1px solid ${T.border}` }}>
+                        {c.snap.segs?.slice(0, c.snap.segCount || 3).map((ps, si) => (
+                          <span key={si} style={{
+                            fontFamily:`'${ps.fontFamily}', sans-serif`,
+                            fontSize: Math.min(ps.fontSize * 0.14, 10),
+                            fontWeight:ps.fontWeight, color:ps.color,
+                            fontStyle:ps.italic ? 'italic' : 'normal',
+                            textTransform:ps.textTransform || 'none',
+                            lineHeight:1, whiteSpace:'nowrap',
+                          }}>{ps.text}</span>
+                        ))}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:12, fontWeight:600, color:T.text1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</div>
+                        <div style={{ fontSize:9, color:T.text4, marginTop:2 }}>{new Date(c.ts).toLocaleDateString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</div>
+                      </div>
+                      <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                        <button onClick={async (e) => {
+                          e.stopPropagation();
+                          const n = prompt('Rename:', c.name);
+                          if (n) { const list = await cloudRename(c.id, n.trim()); if (list) setCreations(list); }
+                        }} style={{
+                          width:22, height:22, borderRadius:5, background:'none', border:`1px solid ${T.ctrlBorder}`,
+                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0,
+                        }}>
+                          <svg width={9} height={9} viewBox="0 0 12 12" fill="none" stroke={T.text3} strokeWidth={1.3} strokeLinecap="round">
+                            <path d="M8.5 1.5l2 2L4 10H2v-2z"/>
+                          </svg>
+                        </button>
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          const encoded = snapEncode(c.snap);
+                          const url = `${window.location.origin}${window.location.pathname}#creation=${encoded}`;
+                          navigator.clipboard.writeText(url).then(() => { setSaveToast('Link copied!'); setTimeout(() => setSaveToast(''), 2000); });
+                        }} style={{
+                          width:22, height:22, borderRadius:5, background:'none', border:`1px solid ${T.ctrlBorder}`,
+                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0,
+                        }}>
+                          {IcoShare}
+                        </button>
+                        <button onClick={async (e) => {
+                          e.stopPropagation();
+                          if (confirm('Delete this creation?')) { const list = await cloudDel(c.id); if (list) setCreations(list); }
+                        }} style={{
+                          width:22, height:22, borderRadius:5, background:'none', border:`1px solid rgba(220,38,38,0.2)`,
+                          cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', padding:0,
+                        }}>
+                          <svg width={9} height={9} viewBox="0 0 12 12" fill="none" stroke="#dc2626" strokeWidth={1.3} strokeLinecap="round">
+                            <path d="M2 3h8M4.5 3V2a1 1 0 011-1h1a1 1 0 011 1v1M9.5 3l-.5 7a1 1 0 01-1 1h-4a1 1 0 01-1-1L2.5 3"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* hidden file input for JSON import */}
+      <input ref={fileInputRef} type="file" accept=".json" style={{ display:'none' }} onChange={handleImport}/>
+
+      {/* ── PRESENTATION MODE ── */}
+      {presentMode && createPortal(
+        <div style={{
+          position:'fixed', inset:0, zIndex:9999, background:'#000',
+          display:'flex', flexDirection:'column', cursor:'none',
+        }}
+          onClick={(e) => {
+            const x = e.clientX / window.innerWidth;
+            if (x > 0.3) presentNext(); else presentPrev();
+          }}
+        >
+          {/* Slide content */}
+          {PRESENT_SLIDES[presentSlide]?.type === 'cover' && (
+            <div style={{
+              flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between',
+              padding:'64px 80px 40px', cursor:'none', userSelect:'none',
+            }}>
+              <div>
+                <div style={{
+                  fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue','Inter',sans-serif",
+                  fontSize:14, fontWeight:400, color:'rgba(255,255,255,0.4)',
+                  letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:16,
+                  opacity:0, animation:'pdFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.05s forwards',
+                }}>Editor 3</div>
+                <div style={{
+                  fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue','Inter',sans-serif", fontWeight:500,
+                  fontSize:'min(12vw, 160px)', lineHeight:0.92, color:'#fff',
+                  letterSpacing:'0.04em', textTransform:'uppercase',
+                }}>
+                  <div style={{
+                    opacity:0, animation:'pdSlideUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.1s forwards',
+                  }}>Text</div>
+                  <div style={{
+                    opacity:0, animation:'pdSlideUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s forwards',
+                  }}>Combination</div>
+                </div>
+                <div style={{
+                  marginTop:32, fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue','Inter',sans-serif",
+                  fontSize:'min(2.2vw, 28px)', fontWeight:400, color:'rgba(255,255,255,0.5)',
+                  letterSpacing:'0.01em', lineHeight:1.4,
+                  opacity:0, animation:'pdFadeIn 1s cubic-bezier(0.22,1,0.36,1) 0.6s forwards',
+                }}>Product Strategy Deck</div>
+              </div>
+              <div style={{
+                display:'flex', justifyContent:'space-between', alignItems:'flex-end',
+                borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:20,
+                fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue','Inter',sans-serif",
+                fontSize:13, color:'rgba(255,255,255,0.3)', fontWeight:400, letterSpacing:'0.04em',
+                opacity:0, animation:'pdFadeIn 1s cubic-bezier(0.22,1,0.36,1) 0.9s forwards',
+              }}>
+                <span>Wix Design Infrastructure</span>
+                <span>Content Team / Editor Team</span>
+                <span>2026</span>
+              </div>
+            </div>
+          )}
+
+          {PRESENT_SLIDES[presentSlide]?.type === 'agenda' && (
+            <div style={{
+              flex:1, display:'flex', flexDirection:'column', justifyContent:'flex-end',
+              padding:'48px 72px 0', cursor:'none', userSelect:'none',
+              fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue','Inter',sans-serif",
+            }}>
+              <div style={{
+                marginBottom:'auto', paddingTop:8,
+                opacity:0, animation:'pdFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s forwards',
+              }}>
+                <div style={{ fontSize:24, fontWeight:300, color:'rgba(255,255,255,0.85)' }}>Agenda</div>
+                <div style={{ fontSize:13, fontWeight:400, color:'rgba(255,255,255,0.35)', marginTop:4, letterSpacing:'0.02em' }}>What we&apos;ll cover today</div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                {[
+                  { num:'01', title:'User Intent', desc:'What users want to achieve with text combinations' },
+                  { num:'02', title:'The Problem', desc:'SEO & accessibility challenges blocking release' },
+                  { num:'03', title:'Why Now?', desc:'Competitive gap and user demand' },
+                  { num:'04', title:'Our Approach', desc:'Custom component + HTML vs SVG alternatives' },
+                  { num:'05', title:'The Solution', desc:'Bottom-to-top: wrapper \u2192 style \u2192 layout \u2192 effects \u2192 animation' },
+                  { num:'06', title:'The Flow', desc:'End-to-end preset creation walkthrough' },
+                ].map((item, i) => (
+                  <div key={i} style={{
+                    borderTop:'1px solid rgba(255,255,255,0.15)',
+                    paddingLeft:'1.5vw', paddingBottom:9, paddingTop:10,
+                    opacity:0, animation:`pdSlideUp 0.5s cubic-bezier(0.22,1,0.36,1) ${0.2 + i * 0.07}s forwards`,
+                  }}>
+                    <div style={{
+                      fontSize:13, fontWeight:400, color:'rgba(255,255,255,0.35)',
+                      fontVariantNumeric:'tabular-nums',
+                    }}>{item.num}</div>
+                    <div style={{
+                      fontSize:'min(5.5vw, 64px)', fontWeight:300, color:'#fff',
+                      lineHeight:0.6, letterSpacing:'0.04em', paddingBottom:12, paddingLeft:'0.4em',
+                    }}>{item.title}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                display:'flex', justifyContent:'space-between', alignItems:'center',
+                borderTop:'1px solid rgba(255,255,255,0.15)', padding:'14px 0',
+                fontSize:12, color:'rgba(255,255,255,0.3)', fontWeight:400, letterSpacing:'0.04em',
+                opacity:0, animation:'pdFadeIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.8s forwards',
+              }}>
+                <span>Wix Harmony</span>
+                <span>Content Team / Editor Team</span>
+                <span>2026</span>
+              </div>
+            </div>
+          )}
+
+          {PRESENT_SLIDES[presentSlide]?.type === 'content' && (() => {
+            const slide = PRESENT_SLIDES[presentSlide];
+            const mono = "'SF Mono','Fira Mono','Roboto Mono',monospace";
+            const ease = 'cubic-bezier(0.22,1,0.36,1)';
+            const demoLine = (text, delay, color='#555') => (
+              <div style={{ fontSize:'clamp(11px,1.1vw,14px)', fontFamily:mono, color, whiteSpace:'pre',
+                opacity:0, animation:`pdSlideRight 0.5s ${ease} ${delay}s forwards` }}>{text}</div>
+            );
+            const demoTag = (tag, cls, children, delay) => (
+              <div style={{ opacity:0, animation:`pdScale 0.5s ${ease} ${delay}s forwards` }}>
+                <span style={{ fontSize:'clamp(10px,1vw,13px)', fontFamily:mono, color:'#999' }}>&lt;{tag}{cls ? ` class="${cls}"` : ''}&gt;</span>
+                {children && <div style={{ paddingLeft:'clamp(12px,1.5vw,20px)' }}>{children}</div>}
+                <span style={{ fontSize:'clamp(10px,1vw,13px)', fontFamily:mono, color:'#999' }}>&lt;/{tag}&gt;</span>
+              </div>
+            );
+            const demoPyramidRow = (label, w, color, delay) => (
+              <div style={{ display:'flex', alignItems:'center', gap:12, opacity:0, animation:`pdSlideRight 0.6s ${ease} ${delay}s forwards` }}>
+                <div style={{ width:w, height:'clamp(28px,3vw,40px)', background:color, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:'clamp(10px,1vw,13px)', fontWeight:600, color:'#fff', letterSpacing:'0.03em', textTransform:'uppercase' }}>{label}</div>
+              </div>
+            );
+            const demoStyleProp = (prop, val, delay) => (
+              <div style={{ display:'flex', gap:8, alignItems:'baseline', opacity:0, animation:`pdSlideRight 0.4s ${ease} ${delay}s forwards` }}>
+                <span style={{ fontSize:'clamp(10px,1vw,13px)', fontFamily:mono, color:'#999' }}>{prop}:</span>
+                <span style={{ fontSize:'clamp(11px,1.1vw,14px)', fontFamily:mono, color:'#333', fontWeight:600 }}>{val}</span>
+              </div>
+            );
+            const demoBox = (label, items, delay, accent='#3b82f6') => (
+              <div style={{ border:`1px solid ${accent}33`, borderRadius:8, padding:'clamp(10px,1.2vw,16px)',
+                opacity:0, animation:`pdScale 0.5s ${ease} ${delay}s forwards` }}>
+                <div style={{ fontSize:'clamp(9px,0.9vw,11px)', fontWeight:700, color:accent, textTransform:'uppercase',
+                  letterSpacing:'0.08em', marginBottom:6 }}>{label}</div>
+                {items.map((t,i) => <div key={i} style={{ fontSize:'clamp(10px,1vw,13px)', color:'#555', lineHeight:1.6 }}>{t}</div>)}
+              </div>
+            );
+
+            const renderDemo = () => {
+              switch(slide.demo) {
+
+                case 'definition': return (
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'clamp(8px,1vw,16px)', height:'100%' }}>
+                    <div style={{ fontSize:'clamp(36px,5vw,72px)', fontWeight:700, color:'#18181b', textTransform:'uppercase', letterSpacing:'0.04em', lineHeight:0.95,
+                      opacity:0, animation:`pdScale 0.8s ${ease} 0.4s forwards` }}>SALE</div>
+                    <div style={{ fontSize:'clamp(14px,1.8vw,24px)', fontWeight:300, color:'#71717a', fontStyle:'italic', letterSpacing:'0.02em',
+                      opacity:0, animation:`pdFadeIn 0.8s ${ease} 0.7s forwards` }}>New Collection</div>
+                    <div style={{ fontSize:'clamp(9px,0.8vw,11px)', fontWeight:600, color:'#a1a1aa', textTransform:'uppercase', letterSpacing:'0.12em', marginTop:4,
+                      opacity:0, animation:`pdFadeIn 0.6s ${ease} 1s forwards` }}>EST. 2024</div>
+                  </div>
+                );
+
+                case 'audience': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,1.5vw,20px)', justifyContent:'center', height:'100%' }}>
+                    {[{icon:'\u2605',label:'DIY Users',sub:'No design background'},{icon:'\u25A0',label:'Small Business',sub:'Need fast, polished results'},{icon:'\u2726',label:'Creative Pros',sub:'Want expressive typography'}].map((u,i) => (
+                      <div key={i} style={{ display:'flex', gap:12, alignItems:'center', opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.4+i*0.15}s forwards` }}>
+                        <div style={{ fontSize:'clamp(20px,2.5vw,32px)' }}>{u.icon}</div>
+                        <div>
+                          <div style={{ fontSize:'clamp(12px,1.2vw,16px)', fontWeight:600, color:'#333' }}>{u.label}</div>
+                          <div style={{ fontSize:'clamp(10px,1vw,13px)', color:'#888' }}>{u.sub}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+
+                case 'seo': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8, justifyContent:'center', height:'100%' }}>
+                    {['<h1>SALE</h1>','<h2>New Collection</h2>','<h3>Shop Now</h3>'].map((t,i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:10, opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.3+i*0.2}s forwards` }}>
+                        <div style={{ fontSize:'clamp(10px,1vw,13px)', fontFamily:mono, color:'#ef4444', background:'#fef2f2', padding:'4px 8px', borderRadius:4 }}>{t}</div>
+                        <div style={{ fontSize:16, color:'#ef4444', opacity:0, animation:`pdFadeIn 0.3s ${ease} ${0.8+i*0.2}s forwards` }}>\u2717</div>
+                      </div>
+                    ))}
+                    <div style={{ marginTop:8, fontSize:'clamp(10px,1vw,12px)', color:'#ef4444', fontWeight:500,
+                      opacity:0, animation:`pdFadeIn 0.6s ${ease} 1.5s forwards` }}>3 separate headings \u2014 no semantic relationship</div>
+                  </div>
+                );
+
+                case 'blocker': return (
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, height:'100%' }}>
+                    <div style={{ width:'clamp(48px,5vw,64px)', height:'clamp(48px,5vw,64px)', borderRadius:'50%', background:'#fef2f2', border:'2px solid #fca5a5',
+                      display:'flex', alignItems:'center', justifyContent:'center', fontSize:'clamp(20px,2.5vw,32px)',
+                      opacity:0, animation:`pdScale 0.6s ${ease} 0.3s forwards` }}>{'\u26D4'}</div>
+                    <div style={{ textAlign:'center', opacity:0, animation:`pdFadeIn 0.6s ${ease} 0.6s forwards` }}>
+                      <div style={{ fontSize:'clamp(13px,1.3vw,18px)', fontWeight:600, color:'#dc2626' }}>BLOCKED</div>
+                      <div style={{ fontSize:'clamp(10px,1vw,13px)', color:'#888', marginTop:4 }}>Accessibility review required</div>
+                    </div>
+                  </div>
+                );
+
+                case 'competitors': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(10px,1.2vw,16px)', justifyContent:'center', height:'100%' }}>
+                    {[{name:'Canva',desc:'Grouped text presets',color:'#7c3aed'},{name:'Adobe Express',desc:'Styled composition library',color:'#e11d48'},{name:'Figma Sites',desc:'Text styling differentiator',color:'#333'}].map((c,i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:12, opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.4+i*0.15}s forwards` }}>
+                        <div style={{ width:'clamp(8px,0.8vw,12px)', height:'clamp(8px,0.8vw,12px)', borderRadius:'50%', background:c.color, flexShrink:0 }} />
+                        <div>
+                          <div style={{ fontSize:'clamp(12px,1.2vw,16px)', fontWeight:600, color:'#333' }}>{c.name}</div>
+                          <div style={{ fontSize:'clamp(10px,1vw,13px)', color:'#888' }}>{c.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+
+                case 'value': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(10px,1.2vw,16px)', justifyContent:'center', height:'100%' }}>
+                    {[{n:'#1',label:'Most requested visual element'},{n:'30+',label:'Preset templates at launch'},{n:'\u221E',label:'Custom compositions possible'}].map((s,i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'baseline', gap:12, opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.4+i*0.2}s forwards` }}>
+                        <div style={{ fontSize:'clamp(20px,2.5vw,36px)', fontWeight:700, color:'#3b82f6', fontVariantNumeric:'tabular-nums', minWidth:'clamp(36px,4vw,56px)' }}>{s.n}</div>
+                        <div style={{ fontSize:'clamp(11px,1.1vw,15px)', color:'#555' }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+
+                case 'custom': return (
+                  <div style={{ display:'flex', gap:'clamp(12px,1.5vw,24px)', height:'100%', alignItems:'center' }}>
+                    <div style={{ flex:1, background:'#fff', borderRadius:8, border:'1px solid #e5e7eb', padding:'clamp(10px,1.2vw,16px)',
+                      opacity:0, animation:`pdSlideRight 0.5s ${ease} 0.4s forwards` }}>
+                      <div style={{ fontSize:'clamp(9px,0.8vw,11px)', fontWeight:700, color:'#3b82f6', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Panel</div>
+                      {['Segment 1: SALE','Segment 2: New Collection','Segment 3: Shop Now'].map((s,i) => (
+                        <div key={i} style={{ fontSize:'clamp(10px,1vw,13px)', color:'#555', padding:'4px 0', borderBottom:'1px solid #f3f4f6' }}>{s}</div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize:'clamp(16px,2vw,24px)', color:'#ccc', opacity:0, animation:`pdFadeIn 0.4s ${ease} 0.7s forwards` }}>\u2192</div>
+                    <div style={{ flex:1, background:'#18181b', borderRadius:8, padding:'clamp(10px,1.2vw,16px)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
+                      opacity:0, animation:`pdScale 0.5s ${ease} 0.8s forwards` }}>
+                      <div style={{ fontSize:'clamp(9px,0.8vw,11px)', fontWeight:700, color:'rgba(255,255,255,0.3)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:4 }}>Canvas</div>
+                      <div style={{ fontSize:'clamp(18px,2vw,28px)', fontWeight:700, color:'#fff' }}>SALE</div>
+                      <div style={{ fontSize:'clamp(10px,1vw,14px)', fontWeight:300, color:'rgba(255,255,255,0.6)', fontStyle:'italic' }}>New Collection</div>
+                      <div style={{ fontSize:'clamp(8px,0.8vw,11px)', fontWeight:600, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Shop Now</div>
+                    </div>
+                  </div>
+                );
+
+                case 'html': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, justifyContent:'center', height:'100%', fontFamily:mono }}>
+                    {demoLine('<h1 class="tc-wrapper">', 0.3, '#16a34a')}
+                    {demoLine('  <span style="font-size:80px">SALE</span>', 0.5, '#333')}
+                    {demoLine('  <span style="font-style:italic">New Collection</span>', 0.7, '#333')}
+                    {demoLine('  <span style="font-size:12px">SHOP NOW</span>', 0.9, '#333')}
+                    {demoLine('</h1>', 1.1, '#16a34a')}
+                    <div style={{ marginTop:12, display:'flex', gap:6, opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.4s forwards` }}>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 SEO</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 A11y</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#dcfce7', color:'#16a34a', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Selection</span>
+                    </div>
+                  </div>
+                );
+
+                case 'svg': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, justifyContent:'center', height:'100%', fontFamily:mono }}>
+                    {demoLine('<h1 class="sr-only">SALE New Collection</h1>', 0.3, '#7c3aed')}
+                    {demoLine('', 0.4)}
+                    {demoLine('<svg aria-hidden="true" viewBox="...">', 0.5, '#3b82f6')}
+                    {demoLine('  <text x="0" y="80" fill="url(#grad)">SALE</text>', 0.7, '#333')}
+                    {demoLine('  <text x="0" y="120">New Collection</text>', 0.9, '#333')}
+                    {demoLine('</svg>', 1.1, '#3b82f6')}
+                    <div style={{ marginTop:12, display:'flex', gap:6, opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.4s forwards` }}>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Gradients</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Stroke</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', background:'#ede9fe', color:'#7c3aed', padding:'2px 6px', borderRadius:3, fontWeight:600 }}>\u2713 Filters</span>
+                    </div>
+                  </div>
+                );
+
+                case 'compare': return (
+                  <div style={{ display:'flex', gap:'clamp(8px,1vw,16px)', height:'100%', alignItems:'center' }}>
+                    {[
+                      { title:'HTML Mode', color:'#16a34a', pros:['Direct SEO','Native a11y','Text selection','Simple structure'], cons:['No gradients','Limited positioning'] },
+                      { title:'SVG Mode', color:'#7c3aed', pros:['Gradients & fills','Pixel-perfect','SVG filters','Native stroke'], cons:['No text selection','More complex'] },
+                    ].map((m,mi) => (
+                      <div key={mi} style={{ flex:1, borderRadius:8, border:`1px solid ${m.color}22`, padding:'clamp(8px,1vw,14px)',
+                        opacity:0, animation:`pdScale 0.5s ${ease} ${0.3+mi*0.2}s forwards` }}>
+                        <div style={{ fontSize:'clamp(11px,1.1vw,14px)', fontWeight:700, color:m.color, marginBottom:8 }}>{m.title}</div>
+                        {m.pros.map((p,i) => <div key={i} style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#555', lineHeight:1.7 }}>\u2713 {p}</div>)}
+                        {m.cons.map((c,i) => <div key={i} style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#bbb', lineHeight:1.7 }}>\u2717 {c}</div>)}
+                      </div>
+                    ))}
+                  </div>
+                );
+
+                case 'screenreader': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:8, justifyContent:'center', height:'100%' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, opacity:0, animation:`pdFadeIn 0.4s ${ease} 0.3s forwards` }}>
+                      <div style={{ fontSize:'clamp(9px,0.8vw,11px)', fontWeight:700, color:'#333', textTransform:'uppercase', letterSpacing:'0.06em' }}>VoiceOver Output</div>
+                      <div style={{ width:6, height:6, borderRadius:'50%', background:'#22c55e', animation:'pdPulse 1.5s ease infinite' }} />
+                    </div>
+                    {['heading level 1:','SALE, New Collection, Shop Now'].map((t,i) => (
+                      <div key={i} style={{ background:'#18181b', borderRadius:6, padding:'6px 10px',
+                        fontSize:'clamp(11px,1.1vw,14px)', fontFamily:mono, color:i===0?'#a5f3fc':'#fff',
+                        opacity:0, animation:`pdSlideRight 0.5s ${ease} ${0.5+i*0.3}s forwards` }}>{t}</div>
+                    ))}
+                    <div style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#22c55e', fontWeight:500, marginTop:4,
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.2s forwards` }}>\u2713 One continuous reading \u00b7 Correct DOM order</div>
+                  </div>
+                );
+
+                case 'pyramid': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(6px,0.8vw,10px)', justifyContent:'flex-end', height:'100%' }}>
+                    {demoPyramidRow('Animation','45%','#a78bfa',1.2)}
+                    {demoPyramidRow('Effects','55%','#818cf8',1.0)}
+                    {demoPyramidRow('Layout','68%','#6366f1',0.8)}
+                    {demoPyramidRow('Text Style','82%','#4f46e5',0.6)}
+                    {demoPyramidRow('Semantic Wrapper','100%','#3730a3',0.4)}
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:4, opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.6s forwards` }}>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', color:'#3730a3', fontWeight:600 }}>\u2191 Most Critical</span>
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', color:'#a78bfa' }}>Nice to Have \u2191</span>
+                    </div>
+                  </div>
+                );
+
+                case 'wrapper': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', height:'100%' }}>
+                    <div style={{ border:'2px solid #3730a3', borderRadius:8, padding:'clamp(10px,1.2vw,16px)',
+                      opacity:0, animation:`pdScale 0.6s ${ease} 0.3s forwards` }}>
+                      <div style={{ fontSize:'clamp(9px,0.8vw,11px)', fontWeight:700, color:'#3730a3', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>&lt;h1&gt; wrapper</div>
+                      {['SALE','New Collection','Shop Now'].map((t,i) => (
+                        <div key={i} style={{ background:'#eef2ff', borderRadius:4, padding:'4px 8px', marginBottom:4,
+                          fontSize:'clamp(10px,1vw,14px)', color:'#3730a3',
+                          opacity:0, animation:`pdSlideRight 0.4s ${ease} ${0.6+i*0.2}s forwards` }}>&lt;span&gt; {t}</div>
+                      ))}
+                    </div>
+                    <div style={{ textAlign:'center', fontSize:'clamp(9px,0.9vw,12px)', color:'#16a34a', fontWeight:600,
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.3s forwards` }}>Single semantic unit \u2713</div>
+                  </div>
+                );
+
+                case 'style': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(6px,0.8vw,10px)', justifyContent:'center', height:'100%' }}>
+                    <div style={{ fontSize:'clamp(28px,3.5vw,48px)', fontWeight:700, color:'#18181b', letterSpacing:'0.04em',
+                      opacity:0, animation:`pdScale 0.6s ${ease} 0.3s forwards` }}>SALE</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                      {demoStyleProp('font-family', 'Bebas Neue', 0.5)}
+                      {demoStyleProp('font-size', '80px', 0.6)}
+                      {demoStyleProp('font-weight', '700', 0.7)}
+                      {demoStyleProp('letter-spacing', '0.04em', 0.8)}
+                      {demoStyleProp('line-height', '0.95', 0.9)}
+                      {demoStyleProp('color', '#18181b', 1.0)}
+                    </div>
+                  </div>
+                );
+
+                case 'layout': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(12px,1.5vw,20px)', justifyContent:'center', height:'100%' }}>
+                    <div style={{ display:'flex', gap:8, opacity:0, animation:`pdSlideRight 0.5s ${ease} 0.3s forwards` }}>
+                      {['SALE','Collection'].map((t,i) => (
+                        <div key={i} style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:4, padding:'4px 8px',
+                          fontSize:'clamp(11px,1.1vw,15px)', fontWeight:600, color:'#4f46e5' }}>{t}</div>
+                      ))}
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', color:'#999', alignSelf:'center', marginLeft:4 }}>direction: row</span>
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:8, opacity:0, animation:`pdSlideRight 0.5s ${ease} 0.6s forwards` }}>
+                      {['SALE','Collection'].map((t,i) => (
+                        <div key={i} style={{ background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:4, padding:'4px 8px', width:'fit-content',
+                          fontSize:'clamp(11px,1.1vw,15px)', fontWeight:600, color:'#4f46e5' }}>{t}</div>
+                      ))}
+                      <span style={{ fontSize:'clamp(9px,0.8vw,11px)', color:'#999' }}>direction: column \u00b7 gap: 8px \u00b7 align: start</span>
+                    </div>
+                  </div>
+                );
+
+                case 'effects': return (
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'clamp(8px,1vw,14px)', alignContent:'center', height:'100%' }}>
+                    {[
+                      {label:'Outline', style:{WebkitTextStroke:'2px #333', color:'transparent'}},
+                      {label:'Hard Shadow', style:{textShadow:'3px 3px 0 rgba(0,0,0,0.8)', color:'#fff'}},
+                      {label:'Neon Glow', style:{textShadow:'0 0 10px #3b82f6, 0 0 20px #3b82f6, 0 0 40px #3b82f6', color:'#fff'}},
+                      {label:'3D Extrude', style:{textShadow:'1px 1px 0 #666,2px 2px 0 #555,3px 3px 0 #444,4px 4px 0 #333', color:'#fff'}},
+                    ].map((fx,i) => (
+                      <div key={i} style={{ background:'#18181b', borderRadius:6, padding:'clamp(8px,1vw,14px)', textAlign:'center',
+                        opacity:0, animation:`pdScale 0.5s ${ease} ${0.3+i*0.15}s forwards` }}>
+                        <div style={{ fontSize:'clamp(18px,2.2vw,30px)', fontWeight:700, ...fx.style }}>Aa</div>
+                        <div style={{ fontSize:'clamp(8px,0.8vw,10px)', color:'rgba(255,255,255,0.4)', marginTop:4, textTransform:'uppercase', letterSpacing:'0.06em' }}>{fx.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+
+                case 'animation': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(8px,1vw,14px)', justifyContent:'center', height:'100%' }}>
+                    {[
+                      {label:'Fade Up', anim:'pdSlideUp'},
+                      {label:'Scale', anim:'pdScale'},
+                      {label:'Slide Right', anim:'pdSlideRight'},
+                    ].map((a,i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:12, opacity:0, animation:`${a.anim} 0.8s ${ease} ${0.4+i*0.3}s forwards` }}>
+                        <div style={{ fontSize:'clamp(18px,2.2vw,28px)', fontWeight:700, color:'#333' }}>Hello</div>
+                        <div style={{ fontSize:'clamp(9px,0.8vw,11px)', color:'#999', fontFamily:mono }}>{a.label}</div>
+                      </div>
+                    ))}
+                    <div style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#888', marginTop:4,
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1.4s forwards` }}>+ blur, flip, slide, fade down/left/right</div>
+                  </div>
+                );
+
+                case 'flow-preset': return (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'clamp(6px,0.8vw,10px)', alignContent:'center', height:'100%' }}>
+                    {['Script+Sans','Bold+Script','Sticker Pop','Neon Glow','Win Win','CTA Badge','Vintage','3D Extrude','Minimal'].map((name,i) => (
+                      <div key={i} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:6, padding:'clamp(6px,0.8vw,10px)', textAlign:'center',
+                        fontSize:'clamp(8px,0.8vw,11px)', color:'#555',
+                        opacity:0, animation:`pdScale 0.4s ${ease} ${0.2+i*0.08}s forwards`,
+                        ...(i===0?{border:'2px solid #3b82f6', background:'#eff6ff'}:{}) }}>{name}</div>
+                    ))}
+                  </div>
+                );
+
+                case 'flow-edit': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, justifyContent:'center', height:'100%' }}>
+                    {['Segment 1','Segment 2','Segment 3'].map((s,i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:8,
+                        opacity:0, animation:`pdSlideRight 0.4s ${ease} ${0.3+i*0.15}s forwards` }}>
+                        <div style={{ width:'clamp(14px,1.5vw,20px)', height:'clamp(14px,1.5vw,20px)', background:'#e5e7eb', borderRadius:3, display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:'clamp(8px,0.8vw,10px)', color:'#999', cursor:'grab' }}>\u2630</div>
+                        <div style={{ flex:1, background:'#fff', border:'1px solid #e5e7eb', borderRadius:4, padding:'4px 8px',
+                          fontSize:'clamp(10px,1vw,13px)', color:'#333' }}>{['SALE','New Collection','Shop Now'][i]}</div>
+                        <div style={{ fontSize:'clamp(8px,0.8vw,10px)', color:'#999', fontFamily:mono }}>#{i+1}</div>
+                      </div>
+                    ))}
+                    <div style={{ fontSize:'clamp(9px,0.9vw,11px)', color:'#3b82f6', fontWeight:500, marginTop:4,
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 0.9s forwards` }}>Drag to reorder \u00b7 DOM order updates live</div>
+                  </div>
+                );
+
+                case 'flow-style': return (
+                  <div style={{ display:'flex', gap:'clamp(12px,1.5vw,24px)', height:'100%', alignItems:'center' }}>
+                    <div style={{ flex:1, display:'flex', flexDirection:'column', gap:4, opacity:0, animation:`pdSlideRight 0.5s ${ease} 0.3s forwards` }}>
+                      {[{l:'Font',v:'Bebas Neue'},{l:'Size',v:'80px'},{l:'Weight',v:'700'},{l:'Color',v:'#18181b'},{l:'Tracking',v:'0.04em'}].map((f,i) => (
+                        <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'clamp(9px,0.9vw,12px)', padding:'2px 0', borderBottom:'1px solid #f3f4f6' }}>
+                          <span style={{ color:'#999' }}>{f.l}</span>
+                          <span style={{ color:'#333', fontWeight:500, fontFamily:mono }}>{f.v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ flex:1, background:'#18181b', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', padding:'clamp(12px,1.5vw,20px)',
+                      opacity:0, animation:`pdScale 0.5s ${ease} 0.6s forwards` }}>
+                      <div style={{ fontSize:'clamp(24px,3vw,40px)', fontWeight:700, color:'#fff', letterSpacing:'0.04em' }}>SALE</div>
+                    </div>
+                  </div>
+                );
+
+                case 'flow-effects': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(8px,1vw,14px)', justifyContent:'center', height:'100%' }}>
+                    <div style={{ display:'flex', gap:'clamp(6px,0.8vw,10px)', flexWrap:'wrap', opacity:0, animation:`pdFadeIn 0.5s ${ease} 0.3s forwards` }}>
+                      {['Outline','Shadow','Neon','Retro','Badge','Twist'].map((e,i) => (
+                        <div key={i} style={{ fontSize:'clamp(9px,0.8vw,11px)', padding:'3px 8px', borderRadius:4,
+                          background: i===2?'#3b82f6':'#f3f4f6', color: i===2?'#fff':'#666', fontWeight:500 }}>{e}</div>
+                      ))}
+                    </div>
+                    <div style={{ background:'#18181b', borderRadius:8, padding:'clamp(16px,2vw,24px)', textAlign:'center',
+                      opacity:0, animation:`pdScale 0.6s ${ease} 0.5s forwards` }}>
+                      <div style={{ fontSize:'clamp(24px,3vw,40px)', fontWeight:700, color:'#fff',
+                        textShadow:'0 0 10px #3b82f6, 0 0 20px #3b82f6, 0 0 40px #3b82f6' }}>SALE</div>
+                    </div>
+                    <div style={{ fontSize:'clamp(9px,0.9vw,12px)', color:'#888',
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 0.9s forwards` }}>Set animation: fadeUp \u00b7 500ms \u00b7 150ms stagger \u00b7 spring easing</div>
+                  </div>
+                );
+
+                case 'flow-publish': return (
+                  <div style={{ display:'flex', flexDirection:'column', gap:'clamp(8px,1vw,14px)', justifyContent:'center', height:'100%' }}>
+                    {[
+                      {icon:'\u2713', label:'Semantic tag: h1', color:'#16a34a'},
+                      {icon:'\u2713', label:'Contrast ratio: 12.4:1', color:'#16a34a'},
+                      {icon:'\u2713', label:'Screen reader: passing', color:'#16a34a'},
+                      {icon:'\u2713', label:'WCAG AA compliant', color:'#16a34a'},
+                    ].map((c,i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:8,
+                        opacity:0, animation:`pdSlideRight 0.4s ${ease} ${0.3+i*0.15}s forwards` }}>
+                        <div style={{ width:'clamp(16px,1.5vw,20px)', height:'clamp(16px,1.5vw,20px)', borderRadius:'50%', background:`${c.color}15`, color:c.color,
+                          display:'flex', alignItems:'center', justifyContent:'center', fontSize:'clamp(9px,0.9vw,12px)', fontWeight:700 }}>{c.icon}</div>
+                        <div style={{ fontSize:'clamp(11px,1.1vw,14px)', color:'#333' }}>{c.label}</div>
+                      </div>
+                    ))}
+                    <div style={{ marginTop:4, background:'#f8fafc', borderRadius:6, padding:'6px 10px',
+                      fontSize:'clamp(9px,0.9vw,12px)', fontFamily:mono, color:'#666',
+                      opacity:0, animation:`pdFadeIn 0.5s ${ease} 1s forwards` }}>Code copied to clipboard \u2713</div>
+                  </div>
+                );
+
+                default: return (
+                  <div style={{ width:'100%', height:'100%', border:'1px solid rgba(0,0,0,0.06)', borderRadius:8 }} />
+                );
+              }
+            };
+
+            return (
+              <div style={{
+                flex:1, display:'flex', flexDirection:'column',
+                padding:'24px 32px 32px', cursor:'none', userSelect:'none',
+                fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue','Inter',sans-serif",
+                background:'#F0F0F0',
+              }}>
+                <div style={{
+                  fontSize:13, fontWeight:400, color:'rgba(51,51,51,0.4)',
+                  paddingBottom:12, fontVariantNumeric:'tabular-nums',
+                  opacity:0, animation:`pdFadeIn 0.5s ${ease} 0.05s forwards`,
+                }}>{slide.chapterNum}</div>
+                <div style={{
+                  flex:1, display:'flex', flexDirection:'column',
+                  border:'1px solid rgba(0,0,0,0.1)', borderRadius:12,
+                  padding:'clamp(24px, 3vw, 48px)',
+                }}>
+                  <div style={{
+                    display:'flex', justifyContent:'space-between', alignItems:'flex-start',
+                    marginBottom:'clamp(16px, 2vw, 32px)',
+                  }}>
+                    <div style={{
+                      fontSize:'clamp(28px, 4vw, 56px)', fontWeight:300, color:'#333',
+                      letterSpacing:'0.02em', lineHeight:1,
+                      opacity:0, animation:`pdSlideUp 0.7s ${ease} 0.15s forwards`,
+                    }}>{slide.section}</div>
+                    <div style={{
+                      fontSize:'clamp(11px, 1.2vw, 15px)', fontWeight:400, color:'rgba(51,51,51,0.45)',
+                      letterSpacing:'0.03em', whiteSpace:'nowrap', paddingTop:'0.4em',
+                      opacity:0, animation:`pdFadeIn 0.6s ${ease} 0.4s forwards`,
+                    }}>{slide.chapterTitle}</div>
+                  </div>
+                  <div style={{ flex:1, display:'flex', gap:'clamp(24px, 3vw, 48px)' }}>
+                    <div style={{ flex:'0 0 35%', display:'flex', alignItems:'flex-start' }}>
+                      <div style={{
+                        fontSize:'clamp(14px, 1.5vw, 20px)', fontWeight:400, color:'#333',
+                        lineHeight:1.55, letterSpacing:'0.005em',
+                        opacity:0, animation:`pdFadeIn 0.8s ${ease} 0.3s forwards`,
+                      }}>{slide.body}</div>
+                    </div>
+                    <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <div style={{ width:'100%', height:'100%', maxWidth:'clamp(240px, 30vw, 480px)',
+                        opacity:0, animation:`pdFadeIn 0.6s ${ease} 0.4s forwards` }}>
+                        {renderDemo()}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    borderTop:'1px solid rgba(0,0,0,0.1)', paddingTop:14,
+                    fontSize:12, color:'rgba(51,51,51,0.35)', fontWeight:400, letterSpacing:'0.04em',
+                    opacity:0, animation:`pdFadeIn 0.8s ${ease} 0.8s forwards`,
+                  }}>
+                    <span>Wix Harmony</span>
+                    <span>Content Team / Editor Team</span>
+                    <span>2026</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {PRESENT_SLIDES[presentSlide]?.type === 'chapter' && (() => {
+            const slide = PRESENT_SLIDES[presentSlide];
+            return (
+              <div style={{
+                flex:1, display:'flex', flexDirection:'column',
+                padding:'24px 32px 32px', cursor:'none', userSelect:'none',
+                fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue','Inter',sans-serif",
+              }}>
+                <div style={{
+                  fontSize:13, fontWeight:400, color:'rgba(255,255,255,0.35)',
+                  paddingBottom:12, fontVariantNumeric:'tabular-nums',
+                  opacity:0, animation:'pdFadeIn 0.5s cubic-bezier(0.22,1,0.36,1) 0.05s forwards',
+                }}>{slide.num}</div>
+                <div style={{
+                  flex:1, display:'flex', flexDirection:'column',
+                  border:'1px solid rgba(255,255,255,0.12)', borderRadius:12,
+                  padding:'clamp(24px, 3vw, 48px)',
+                  position:'relative',
+                }}>
+                  <div style={{
+                    display:'flex', justifyContent:'space-between', alignItems:'flex-start',
+                  }}>
+                    <div style={{
+                      fontSize:'clamp(28px, 4vw, 56px)', fontWeight:300, color:'#fff',
+                      letterSpacing:'0.02em', lineHeight:1,
+                      opacity:0, animation:'pdSlideUp 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s forwards',
+                    }}>{slide.title}</div>
+                    <div style={{
+                      fontSize:'clamp(11px, 1.2vw, 15px)', fontWeight:400, color:'rgba(255,255,255,0.4)',
+                      letterSpacing:'0.03em', whiteSpace:'nowrap', paddingTop:'0.4em',
+                      opacity:0, animation:'pdFadeIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.4s forwards',
+                    }}>{slide.title}</div>
+                  </div>
+                  <div style={{
+                    flex:1, display:'flex', alignItems:'center', justifyContent:'center',
+                  }}>
+                    <div style={{
+                      fontSize:'clamp(16px, 2vw, 26px)', fontWeight:400, color:'rgba(255,255,255,0.85)',
+                      lineHeight:1.5, textAlign:'center', maxWidth:'60%', letterSpacing:'0.005em',
+                      opacity:0, animation:'pdFadeIn 1s cubic-bezier(0.22,1,0.36,1) 0.5s forwards',
+                    }}>{slide.summary}</div>
+                  </div>
+                  <div style={{
+                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:14,
+                    fontSize:12, color:'rgba(255,255,255,0.3)', fontWeight:400, letterSpacing:'0.04em',
+                    opacity:0, animation:'pdFadeIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.8s forwards',
+                  }}>
+                    <span>Wix Harmony</span>
+                    <span>Content Team / Editor Team</span>
+                    <span>2026</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Navigation footer */}
+          <div style={{
+            position:'absolute', bottom:12, left:'50%', transform:'translateX(-50%)',
+            display:'flex', gap:6, alignItems:'center', cursor:'default',
+            opacity:0, animation:'pdFadeIn 0.6s ease 1.2s forwards',
+          }} onClick={e => e.stopPropagation()}>
+            {PRESENT_SLIDES.map((_, i) => (
+              <button key={i} onClick={() => setPresentSlide(i)} style={{
+                width: presentSlide === i ? 24 : 6, height:6, borderRadius:3,
+                background: presentSlide === i ? '#3b82f6' : 'rgba(255,255,255,0.2)',
+                border:'none', cursor:'pointer', padding:0,
+                transition:`all 400ms ${EASE.spring}`,
+              }}/>
+            ))}
+          </div>
+
+          {/* ESC hint */}
+          <button onClick={(e) => { e.stopPropagation(); presentExit(); }} style={{
+            position:'absolute', top:16, right:16,
+            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+            borderRadius:8, padding:'6px 12px', color:'rgba(255,255,255,0.3)',
+            fontSize:10, fontWeight:500, letterSpacing:'0.06em', cursor:'pointer',
+            fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue',sans-serif",
+            opacity:0, animation:'pdFadeIn 0.6s ease 1.5s forwards',
+            transition:`all 200ms ${EASE.out}`,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          >ESC to exit</button>
+        </div>,
+        document.body
+      )}
+
       {/* ── TOAST ── */}
       <div style={{
         position:'fixed', bottom:20, right:20,
@@ -2055,9 +3250,9 @@ export default function App() {
         color:'#fff', borderRadius:12, padding:'9px 18px',
         fontSize:12, fontWeight:500, letterSpacing:'0.01em',
         boxShadow:'0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)',
-        opacity:toast?1:0, transform:toast?'none':'translateY(8px) scale(0.96)',
+        opacity:(toast||saveToast)?1:0, transform:(toast||saveToast)?'none':'translateY(8px) scale(0.96)',
         transition:`all 300ms ${EASE.spring}`, pointerEvents:'none', zIndex:999,
-      }}>Copied to clipboard</div>
+      }}>{saveToast || 'Copied to clipboard'}</div>
 
     </div>
   );
