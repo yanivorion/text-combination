@@ -3314,6 +3314,55 @@ export default function App() {
             ))}
           </div>
 
+          {/* Download JSON */}
+          <button onClick={(e) => {
+            e.stopPropagation();
+            const agenda = [
+              { num:'01', title:'User Intent', desc:'What users want to achieve with text combinations' },
+              { num:'02', title:'The Problem', desc:'Semantics, accessibility & reading order challenges' },
+              { num:'03', title:'Research', desc:'Competitive landscape and market positioning' },
+              { num:'04', title:'Our Approach', desc:'Designated component + HTML vs SVG alternatives' },
+              { num:'05', title:'The Solution', desc:'Bottom-to-top: wrapper \u2192 style \u2192 layout \u2192 effects \u2192 animation' },
+              { num:'06', title:'The Flow', desc:'End-to-end preset creation walkthrough' },
+            ];
+            const deck = {
+              meta: {
+                title: 'Text Combination',
+                subtitle: 'Product Strategy Deck',
+                label: 'Editor 3',
+                org: 'Wix Design Infrastructure',
+                team: 'Content Team / Editor Team',
+                year: 2026,
+                fontFamily: "Neue Haas Grotesk Display Pro, Helvetica Neue, Inter, sans-serif",
+              },
+              theme: {
+                chapter: { background:'#000000', text:'#ffffff', border:'rgba(255,255,255,0.12)', muted:'rgba(255,255,255,0.4)' },
+                content: { background:'#F0F0F0', text:'#333333', border:'rgba(0,0,0,0.1)', muted:'rgba(51,51,51,0.45)' },
+                cover: { background:'#000000', text:'#ffffff' },
+                accent: '#3b82f6',
+              },
+              agenda,
+              slides: PRESENT_SLIDES.map((s, i) => ({ index:i, ...s })),
+            };
+            const blob = new Blob([JSON.stringify(deck, null, 2)], { type:'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'text-combination-deck.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
+          }} style={{
+            position:'absolute', top:16, right:120,
+            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+            borderRadius:8, padding:'6px 12px', color:'rgba(255,255,255,0.3)',
+            fontSize:10, fontWeight:500, letterSpacing:'0.06em', cursor:'pointer',
+            fontFamily:"'Neue Haas Grotesk Display Pro','Helvetica Neue',sans-serif",
+            opacity:0, animation:'pdFadeIn 0.6s ease 1.5s forwards',
+            transition:`all 200ms ${EASE.out}`,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          >{'\u2193'} JSON</button>
+
           {/* ESC hint */}
           <button onClick={(e) => { e.stopPropagation(); presentExit(); }} style={{
             position:'absolute', top:16, right:16,
