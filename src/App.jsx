@@ -796,11 +796,46 @@ export default function App() {
     e.target.value = '';
   };
 
+  const [demoMode, setDemoMode] = useState(null);
+
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#creation=')) {
       const snap = snapDecode(hash.slice('#creation='.length));
       if (snap) { restoreSnap(snap); window.history.replaceState(null, '', window.location.pathname); }
+    }
+    const params = new URLSearchParams(window.location.search);
+    const demo = params.get('demo');
+    if (demo) {
+      setDemoMode(demo);
+      const presetMap = {
+        style: 'Win Win', layout: 'Open Colorful', effects: 'Neon Glow',
+        animation: 'Script + Sans', wrapper: 'Sale Event', screenreader: 'Join Us',
+        custom: 'Business Card', html: 'Sale Event', svg: 'Neon Glow',
+        compare: 'Sale Event', 'flow-preset': null, 'flow-edit': 'Rate Us',
+        'flow-style': 'Construction', 'flow-effects': 'Sticker Pop', 'flow-publish': 'Join Us',
+      };
+      const panelMap = {
+        style: 'a1', layout: 'a2', effects: 'a3', animation: 'a2',
+        wrapper: 'a1', screenreader: null, custom: 'a1',
+        html: 'a1', svg: 'a1', compare: 'a1',
+        'flow-preset': null, 'flow-edit': null, 'flow-style': 'a1',
+        'flow-effects': 'a3', 'flow-publish': null,
+      };
+      const bgMap = {
+        effects: '#0a0a0a', animation: '#ffffff', svg: '#0a0a0a',
+        'flow-effects': '#0a0a0a', screenreader: '#0a0a0a',
+      };
+      const modeMap = { svg: 'svg', html: 'html', compare: 'html' };
+      if (presetMap[demo]) {
+        const p = COMBO_PRESETS.find(c => c.name === presetMap[demo]);
+        if (p) setTimeout(() => applyComboPreset(p), 100);
+      }
+      if (panelMap[demo]) setTimeout(() => setAcc(prev => ({ ...prev, a1:false, a2:false, a3:false, a4:false, [panelMap[demo]]:true })), 150);
+      if (bgMap[demo]) setTimeout(() => setBgColor(bgMap[demo]), 100);
+      if (modeMap[demo]) setTimeout(() => setMode(modeMap[demo]), 100);
+      if (demo === 'flow-preset') setTimeout(() => setPresetsOpen(true), 200);
+      if (demo === 'screenreader') setTimeout(() => setA11yOpen(true), 200);
     }
   }, []);
 
@@ -1915,7 +1950,9 @@ export default function App() {
     }}>
 
       {/* ── TOPBAR ── */}
-      <div data-tour="topbar" style={{ ...glassBar, display:'flex', alignItems:'center', gap:0, padding:'0 18px', height:48, flexShrink:0, zIndex:20, ...enter('tcFadeDown', 0) }}>
+      <div data-tour="topbar" style={{ ...glassBar, display:'flex', alignItems:'center', gap:0, padding:'0 18px', height:48, flexShrink:0, zIndex:20, ...enter('tcFadeDown', 0),
+        ...(demoMode ? { height:0, overflow:'hidden', padding:0, minHeight:0, flexShrink:0 } : {}),
+      }}>
         <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:T.text1, paddingRight:18, marginRight:6, borderRight:`1px solid ${T.border}`, whiteSpace:'nowrap' }}>
           Text Combination
         </span>
@@ -1951,10 +1988,13 @@ export default function App() {
       </div>
 
       {/* ── BODY ── */}
-      <div style={{ flex:1, display:'flex', gap:12, padding:12, overflow:'hidden', minHeight:0 }}>
+      <div style={{ flex:1, display:'flex', gap: demoMode ? 0 : 12, padding: demoMode ? 0 : 12, overflow:'hidden', minHeight:0 }}>
 
         {/* ── PANEL ── */}
-        <div style={{ ...glassPanel, width:280, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', ...enter('tcSlideR', 100) }}>
+        <div style={{ ...glassPanel, width:280, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', ...enter('tcSlideR', 100),
+          ...(demoMode && ['flow-preset','screenreader'].includes(demoMode) ? { width:0, overflow:'hidden', padding:0, border:'none' } : {}),
+          ...(demoMode ? { borderRadius:0, border:'none', boxShadow:'none' } : {}),
+        }}>
 
           <div data-tour="seg-select" style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 12px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
             <span style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text4, marginRight:2, whiteSpace:'nowrap' }}>Seg</span>
@@ -2149,8 +2189,12 @@ export default function App() {
         </div>
 
         {/* ── CANVAS ── */}
-        <div style={{ ...glassPanel, flex:1, minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden', ...enter('tcScale', 140) }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'0 16px', height:42, borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
+        <div style={{ ...glassPanel, flex:1, minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden', ...enter('tcScale', 140),
+          ...(demoMode ? { borderRadius:0, border:'none', boxShadow:'none' } : {}),
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'0 16px', height:42, borderBottom:`1px solid ${T.border}`, flexShrink:0,
+            ...(demoMode ? { height:0, overflow:'hidden', padding:0, borderBottom:'none' } : {}),
+          }}>
             <span style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text4, marginRight:4 }}>
               {a11yOpen ? 'Accessibility' : 'Canvas'}
             </span>
@@ -2598,7 +2642,7 @@ export default function App() {
       <input ref={fileInputRef} type="file" accept=".json" style={{ display:'none' }} onChange={handleImport}/>
 
       {/* ── PRESENTATION MODE ── */}
-      {presentMode && createPortal(
+      {presentMode && !demoMode && createPortal(
         <div style={{
           position:'fixed', inset:0, zIndex:9999, background:'#000',
           display:'flex', flexDirection:'column', cursor:'none',
@@ -3131,10 +3175,22 @@ export default function App() {
                       }}>{slide.body}</div>
                     </div>
                     <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <div style={{ width:'100%', height:'100%', maxWidth:'clamp(240px, 30vw, 480px)',
-                        opacity:0, animation:`pdFadeIn 0.6s ${ease} 0.4s forwards` }}>
-                        {renderDemo()}
-                      </div>
+                      {['style','layout','effects','animation','wrapper','custom','html','svg','screenreader',
+                        'flow-preset','flow-edit','flow-style','flow-effects','flow-publish'].includes(slide.demo) ? (
+                        <div style={{ width:'100%', height:'100%', borderRadius:10, overflow:'hidden', border:'1px solid rgba(0,0,0,0.08)',
+                          opacity:0, animation:`pdScale 0.6s ${ease} 0.4s forwards` }}>
+                          <iframe
+                            src={`${window.location.origin}${window.location.pathname}?demo=${slide.demo}`}
+                            style={{ width:'100%', height:'100%', border:'none', borderRadius:10 }}
+                            title={`Demo: ${slide.demo}`}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ width:'100%', height:'100%', maxWidth:'clamp(240px, 30vw, 480px)',
+                          opacity:0, animation:`pdFadeIn 0.6s ${ease} 0.4s forwards` }}>
+                          {renderDemo()}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div style={{
