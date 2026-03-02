@@ -923,7 +923,7 @@ export default function App() {
     // ── Ch 5: The Solution \u2014 Bottom to Top ──────────────────────────────────
     { type:'chapter', num:5, title:'The Solution',
       summary:'A bottom-to-top approach. Tackling the most critical structural challenge first, then layering style, layout, effects, and animation on top.' },
-    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Priority',
+    { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Component Capability\nPriority',
       body:'We build from the foundation up. Each layer is less critical than the one below it\u2014but together they create the complete experience. The semantic wrapper is non-negotiable; animations are nice-to-have.',
       demo:'pyramid' },
     { type:'content', chapterNum:5, chapterTitle:'The Solution', section:'Layer 1 \u2014 Semantic Wrapper',
