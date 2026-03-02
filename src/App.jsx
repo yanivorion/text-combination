@@ -893,7 +893,7 @@ export default function App() {
     // ── Ch 2: The Problem ───────────────────────────────────────────────────
     { type:'chapter', num:2, title:'The Problem',
       summary:'Each text component has its own HTML tag. Reading order, semantics, and accessibility are broken for screen readers and search engines.' },
-    { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'Semantics, Accessibility and Reading Order',
+    { type:'content', chapterNum:2, chapterTitle:'The Problem', section:'Semantics, Accessibility\nand Reading Order',
       body:'Multiple independent heading tags confuse Google\u2019s hierarchy. A composition of H1 + H2 + H3 is treated as three separate headings, not one combined message. Screen readers announce disconnected fragments with no defined reading order. The accessibility team blocks shipping in the current form\u2014a proper HTML solution is required before release.',
       demo:'seo' },
 
@@ -3166,7 +3166,7 @@ export default function App() {
                   }}>
                     <div style={{
                       fontSize:'clamp(28px, 4vw, 56px)', fontWeight:300, color:'#333',
-                      letterSpacing:'0.02em', lineHeight:1,
+                      letterSpacing:'0.02em', lineHeight:1.1, whiteSpace:'pre-line',
                       opacity:0, animation:`pdSlideUp 0.7s ${ease} 0.15s forwards`,
                     }}>{slide.section}</div>
                     <div style={{
