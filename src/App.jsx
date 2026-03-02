@@ -3226,7 +3226,7 @@ export default function App() {
                     </div>
                   </div>
                   <div style={{
-                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    display:'flex', justifyContent:'center', alignItems:'center', gap:'clamp(24px,3vw,48px)',
                     borderTop:'1px solid rgba(0,0,0,0.1)', paddingTop:14,
                     fontSize:12, color:'rgba(51,51,51,0.35)', fontWeight:400, letterSpacing:'0.04em',
                     opacity:0, animation:`pdFadeIn 0.8s ${ease} 0.8s forwards`,
@@ -3278,12 +3278,13 @@ export default function App() {
                   }}>
                     <div style={{
                       fontSize:'clamp(16px, 2vw, 26px)', fontWeight:400, color:'rgba(255,255,255,0.85)',
-                      lineHeight:1.5, textAlign:'center', maxWidth:'60%', letterSpacing:'0.005em',
+                      lineHeight:1.5, textAlign:'center', maxWidth:'65%', letterSpacing:'0.005em',
+                      margin:'0 auto',
                       opacity:0, animation:'pdFadeIn 1s cubic-bezier(0.22,1,0.36,1) 0.5s forwards',
                     }}>{slide.summary}</div>
                   </div>
                   <div style={{
-                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                    display:'flex', justifyContent:'center', alignItems:'center', gap:'clamp(24px,3vw,48px)',
                     borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:14,
                     fontSize:12, color:'rgba(255,255,255,0.3)', fontWeight:400, letterSpacing:'0.04em',
                     opacity:0, animation:'pdFadeIn 0.8s cubic-bezier(0.22,1,0.36,1) 0.8s forwards',
