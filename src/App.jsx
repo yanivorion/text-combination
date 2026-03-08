@@ -4,7 +4,7 @@ import { Sortable } from '@shopify/draggable';
 
 // ─── Persistence helpers ────────────────────────────────────────────────────────
 const LS_KEY = 'tc_creations';
-const SAVE_FIELDS = ['segs','segCount','mode','bgColor','gTag','gDir','gAlign','gGap','gPad','gWrap','gTrigger','gPreset','gDur','gStagger','gDelay','gEase'];
+const SAVE_FIELDS = ['segs','segCount','mode','bgColor','gTag','gDir','gAlign','gGap','gPad','gWrap','gTrigger','gPreset','gDur','gStagger','gDelay','gEase','posMode'];
 const API = '/api/creations';
 
 const lsCache  = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } };
@@ -519,7 +519,7 @@ const Sel = ({ val, onChange, opts, fontPreview }) => {
 
 const Acc = ({ open, onToggle, num, title, children, ...rest }) => (
   <div {...rest} style={{ borderBottom:`1px solid ${T.border}` }}>
-    <button onClick={onToggle}
+    <button onClick={(e) => onToggle(e)}
       style={{
         display:'flex', alignItems:'center', padding:'0 14px', height:38,
         cursor:'pointer', userSelect:'none', width:'100%', textAlign:'left',
@@ -685,6 +685,7 @@ export default function App() {
   const [gGap,  setGGap]  = useState(16);
   const [gPad,  setGPad]  = useState(48);
   const [gWrap, setGWrap] = useState(true);
+  const [posMode, setPosMode] = useState('layout');
 
   const [gTrigger, setGTrigger] = useState('entrance');
   const [gPreset,  setGPreset]  = useState('fadeUp');
@@ -727,7 +728,7 @@ export default function App() {
   };
 
   // ── Save / Load / Share helpers ────────────────────────────────────────────
-  const getSnap = () => stateToSnap({ segs, segCount, mode, bgColor, gTag, gDir, gAlign, gGap, gPad, gWrap, gTrigger, gPreset, gDur, gStagger, gDelay, gEase });
+  const getSnap = () => stateToSnap({ segs, segCount, mode, bgColor, gTag, gDir, gAlign, gGap, gPad, gWrap, gTrigger, gPreset, gDur, gStagger, gDelay, gEase, posMode });
 
   const restoreSnap = (snap) => {
     if (!snap) return;
@@ -747,6 +748,7 @@ export default function App() {
     if (snap.gStagger != null) setGStagger(snap.gStagger);
     if (snap.gDelay != null)   setGDelay(snap.gDelay);
     if (snap.gEase)    setGEase(snap.gEase);
+    if (snap.posMode)  setPosMode(snap.posMode);
     setActiveSeg(0);
     setCanvasSel(null);
   };
@@ -1277,16 +1279,17 @@ export default function App() {
               return { x: p.x - bph - 2, y: p.y - meas[i].h * 0.82 - bpv - 2, w: meas[i].w + bph * 2 + 4, h: meas[i].h + bpv * 2 + 4 };
             })() : { x: p.x - 3, y: p.y - meas[i].h - 2, w: meas[i].w + 6, h: meas[i].h * 1.2 + 4 };
             return (
-              <g key={i} className="tc-seg" style={{ cursor: isSel ? 'grab' : 'pointer' }}
-                transform={(ox || oy) ? `translate(${ox},${oy})` : undefined}
+              <g key={i} className="tc-seg" style={{ cursor: posMode === 'freeform' && isSel ? 'grab' : 'pointer' }}
+                transform={posMode === 'freeform' && (ox || oy) ? `translate(${ox},${oy})` : undefined}
                 onClick={(e) => { e.stopPropagation(); setCanvasSel(i); setActiveSeg(i); }}
                 onDoubleClick={(e) => {
                   e.stopPropagation();
-                  if (seg.offsetX || seg.offsetY) {
+                  if (posMode === 'freeform' && (seg.offsetX || seg.offsetY)) {
                     setSegs(prev => { const n=[...prev]; n[i]={...n[i], offsetX:0, offsetY:0}; return n; });
                   }
                 }}
                 onMouseDown={(e) => {
+                  if (posMode !== 'freeform') return;
                   if (canvasSel !== i) return;
                   if (e.target.closest('[data-handle]')) return;
                   e.preventDefault();
@@ -1369,7 +1372,7 @@ export default function App() {
                     </svg>
                   </g>
                 )}
-                {isSel && (seg.offsetX !== 0 || seg.offsetY !== 0) && (
+                {posMode === 'freeform' && isSel && (seg.offsetX !== 0 || seg.offsetY !== 0) && (
                   <g data-handle="reset" style={{ cursor:'pointer' }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1383,7 +1386,7 @@ export default function App() {
                     </svg>
                   </g>
                 )}
-                {isSel && !isLast && (() => {
+                {posMode === 'layout' && isSel && !isLast && (() => {
                   const ghx = gDir === 'column' ? bb.x + bb.w / 2 : bb.x + bb.w + gap / 2;
                   const ghy = gDir === 'column' ? bb.y + bb.h + gap / 2 : bb.y + bb.h / 2;
                   return (
@@ -1458,11 +1461,12 @@ export default function App() {
               onClick={(e) => { e.stopPropagation(); setCanvasSel(i); setActiveSeg(i); }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
-                if (seg.offsetX || seg.offsetY) {
+                if (posMode === 'freeform' && (seg.offsetX || seg.offsetY)) {
                   setSegs(prev => { const n=[...prev]; n[i]={...n[i], offsetX:0, offsetY:0}; return n; });
                 }
               }}
               onMouseDown={(e) => {
+                if (posMode !== 'freeform') return;
                 if (canvasSel !== i) return;
                 if (e.target.closest('[data-handle]')) return;
                 e.preventDefault();
@@ -1496,11 +1500,11 @@ export default function App() {
                 document.addEventListener('mouseup', onUp);
               }}
               style={{
-                display:'inline-block', cursor: canvasSel === i ? 'grab' : 'pointer', position:'relative',
+                display:'inline-block', cursor: posMode === 'freeform' && canvasSel === i ? 'grab' : 'pointer', position:'relative',
                 outline: canvasSel === i ? `2px solid ${T.accent}` : '2px solid transparent',
                 outlineOffset: 3, borderRadius: 4,
                 transition: `outline-color 300ms ${EASE.out}`,
-                transform: (seg.offsetX || seg.offsetY) ? `translate(${seg.offsetX||0}px, ${seg.offsetY||0}px)` : undefined,
+                transform: posMode === 'freeform' && (seg.offsetX || seg.offsetY) ? `translate(${seg.offsetX||0}px, ${seg.offsetY||0}px)` : undefined,
                 zIndex: canvasSel === i ? 5 : undefined,
                 ...(hasPerGap && !isLast ? { [marginProp]: gap } : {}),
               }}>
@@ -1541,7 +1545,7 @@ export default function App() {
                   </svg>
                 </div>
               )}
-              {canvasSel === i && (seg.offsetX !== 0 || seg.offsetY !== 0) && (
+              {posMode === 'freeform' && canvasSel === i && (seg.offsetX !== 0 || seg.offsetY !== 0) && (
                 <div data-handle="reset" onClick={(e) => {
                   e.stopPropagation();
                   setSegs(prev => { const n=[...prev]; n[i]={...n[i], offsetX:0, offsetY:0}; return n; });
@@ -2026,7 +2030,7 @@ export default function App() {
 
           <div style={{ flex:1, overflowY:'auto', overflowX:'hidden' }}>
 
-            <Acc data-tour="text-style" open={acc.a1} onToggle={()=>setAcc(p=>({...p,a1:!p.a1}))} num="01" title="Text Style">
+            <Acc data-tour="text-style" open={acc.a1} onToggle={(e)=>setAcc(p=> e.metaKey||e.ctrlKey ? ({...p,a1:!p.a1}) : ({...p,a1:!p.a1,a2:false,a3:false}))} num="01" title="Text Style">
               <Row>
                 <Field label="Text"><TxtIn val={s.text} onChange={v=>upd('text',v)}/></Field>
                 <Field label="px" w={52}><NumIn val={s.fontSize} onChange={v=>upd('fontSize',v)} min={6} max={400}/></Field>
@@ -2049,11 +2053,22 @@ export default function App() {
               <Row><Field label="Color"><ColorField val={s.color} onChange={v=>upd('color',v)}/></Field></Row>
             </Acc>
 
-            <Acc data-tour="composition" open={acc.a2} onToggle={()=>setAcc(p=>({...p,a2:!p.a2}))} num="02" title="Composition">
+            <Acc data-tour="composition" open={acc.a2} onToggle={(e)=>setAcc(p=> e.metaKey||e.ctrlKey ? ({...p,a2:!p.a2}) : ({...p,a1:false,a2:!p.a2,a3:false}))} num="02" title="Composition">
+              <div style={{ display:'flex', borderRadius:6, overflow:'hidden', border:`1px solid ${T.ctrlBorder}`, marginBottom:8 }}>
+                {[{v:'layout',l:'Layout'},{v:'freeform',l:'Freeform'}].map(m=>(
+                  <button key={m.v} onClick={()=>setPosMode(m.v)} style={{
+                    flex:1, padding:'5px 0', fontSize:9, fontWeight:600, letterSpacing:'0.06em', textTransform:'uppercase',
+                    background: posMode===m.v ? T.accent : 'transparent', color: posMode===m.v ? '#fff' : T.text3,
+                    border:'none', cursor:'pointer', fontFamily:'inherit',
+                    transition:`all 200ms ${EASE.out}`,
+                  }}>{m.l}</button>
+                ))}
+              </div>
               <Row>
                 <Field label="Tag"><Sel val={gTag} onChange={setGTag} opts={O.tag}/></Field>
-                <Field label="Direction"><Sel val={gDir} onChange={setGDir} opts={O.dir}/></Field>
+                {posMode === 'layout' && <Field label="Direction"><Sel val={gDir} onChange={setGDir} opts={O.dir}/></Field>}
               </Row>
+              {posMode === 'layout' && <>
               <Row>
                 <Field label="Align"><Sel val={gAlign} onChange={setGAlign} opts={O.align}/></Field>
                 <Field label="Base Gap" w={64}><NumIn val={gGap} onChange={setGGap} min={0} max={120}/></Field>
@@ -2063,6 +2078,12 @@ export default function App() {
                 <Field label=""/>
               </Row>
               <TRow label="Wrap" val={gWrap} onChange={setGWrap}/>
+              </>}
+              {posMode === 'freeform' && (
+                <div style={{ fontSize:9, color:T.text3, padding:'4px 0 6px', lineHeight:1.5 }}>
+                  Drag segments freely on canvas. Double-click to reset position.
+                </div>
+              )}
               <Sep/>
               <Row>
                 <Field label="Trigger"><Sel val={gTrigger} onChange={setGTrigger} opts={O.trigger}/></Field>
@@ -2078,7 +2099,7 @@ export default function App() {
               </Row>
             </Acc>
 
-            <Acc data-tour="effects" open={acc.a3} onToggle={()=>setAcc(p=>({...p,a3:!p.a3}))} num="03" title="Effects">
+            <Acc data-tour="effects" open={acc.a3} onToggle={(e)=>setAcc(p=> e.metaKey||e.ctrlKey ? ({...p,a3:!p.a3}) : ({...p,a1:false,a2:false,a3:!p.a3}))} num="03" title="Effects">
               <Lbl>Quick Effect Presets</Lbl>
               <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:12 }}>
                 {O.effect.map(e => (
@@ -2189,12 +2210,12 @@ export default function App() {
             {!a11yOpen && <div data-tour="bg-swatches" style={{ display:'flex', gap:6, alignItems:'center' }}>
               {BG_SWATCHES.map(v=>(
                 <button key={v} onClick={()=>setBgColor(v)} title={v} style={{
-                  width:16, height:16, borderRadius:'50%', background:v,
+                  width:22, height:22, borderRadius:4, background:v,
                   border: bgColor===v ? `2px solid ${T.accent}` : `1px solid ${T.border2}`,
                   cursor:'pointer', boxSizing:'border-box', padding:0,
-                  transform:bgColor===v?'scale(1.35)':'scale(1)',
-                  transition:`all 300ms ${EASE.spring}`,
-                  boxShadow: bgColor===v ? '0 0 0 3px rgba(59,130,246,0.15)' : 'none',
+                  transform:bgColor===v?'scale(1.1)':'scale(1)',
+                  transition:`all 200ms ${EASE.out}`,
+                  boxShadow: bgColor===v ? `0 0 0 2px rgba(59,130,246,0.18)` : 'none',
                 }}/>
               ))}
             </div>}
