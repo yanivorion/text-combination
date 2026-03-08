@@ -1256,6 +1256,7 @@ export default function App() {
               if (seg.effect==='hard-shadow') return <filter key={i} id={fid} x="-10%" y="-10%" width="140%" height="140%"><feDropShadow dx="4" dy="4" stdDeviation="0" floodOpacity="0.85"/></filter>;
               if (seg.effect==='3d-extrude')  return <filter key={i} id={fid} x="-10%" y="-10%" width="150%" height="150%"><feDropShadow dx="3" dy="3" stdDeviation="0" floodOpacity="0.1"/><feDropShadow dx="6" dy="6" stdDeviation="0" floodOpacity="0.07"/></filter>;
               if (seg.effect==='neon-glow')   return <filter key={i} id={fid} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>;
+              if (seg.effect==='retro')       return <filter key={i} id={fid} x="-10%" y="-10%" width="140%" height="140%"><feDropShadow dx="5" dy="5" stdDeviation="0" floodColor={seg.strokeColor} floodOpacity="1"/></filter>;
               return null;
             })}
           </defs>
@@ -1263,7 +1264,7 @@ export default function App() {
             const p    = pos[i];
             const fill = seg.gradient ? `url(#${uid}g${i})` : (seg.effect==='outline'&&seg.strokeHollow?'none':seg.color);
             const hasStroke = seg.effect==='outline'||seg.effect==='retro';
-            const hasFilt   = ['soft-shadow','hard-shadow','3d-extrude','neon-glow'].includes(seg.effect);
+            const hasFilt   = ['soft-shadow','hard-shadow','3d-extrude','neon-glow','retro'].includes(seg.effect);
             let badge = null;
             if (seg.badge) {
               const parts=seg.badgePadding.split(' ');
@@ -1330,6 +1331,62 @@ export default function App() {
                   />
                 )}
                 {badge}
+                {seg.layering && (() => {
+                  const rad = (seg.layerAngle || 150) * Math.PI / 180;
+                  const lyrs = [];
+                  for (let j = seg.layerCount - 1; j >= 0; j--) {
+                    const dist = (j + 1) * (seg.layerSpace || 6);
+                    const dx = Math.round(Math.cos(rad) * dist * 10) / 10;
+                    const dy = Math.round(Math.sin(rad) * dist * 10) / 10;
+                    lyrs.push(
+                      <text key={`layer-${j}`} x={p.x + dx} y={p.y + dy}
+                        fill={seg.layerColors[j % seg.layerColors.length]}
+                        fontFamily={`'${seg.fontFamily}', sans-serif`}
+                        fontSize={seg.fontSize} fontWeight={seg.fontWeight}
+                        fontStyle={seg.italic?'italic':'normal'}
+                        letterSpacing={seg.letterSpacing}
+                        transform={seg.rotation?`rotate(${seg.rotation} ${p.x + dx} ${p.y + dy})`:undefined}
+                        style={{ pointerEvents:'none' }}
+                      >{meas[i].d}</text>
+                    );
+                  }
+                  return lyrs;
+                })()}
+                {seg.twist ? (() => {
+                  const text = meas[i].d;
+                  const units = seg.twistApply === 'word' ? text.split(/(\s+)/) : text.split('');
+                  const font = `${seg.italic?'italic ':''}${seg.fontWeight} ${seg.fontSize}px "${seg.fontFamily}",sans-serif`;
+                  ctx.font = font;
+                  const ls = parseFloat(seg.letterSpacing) * seg.fontSize;
+                  let cx = p.x;
+                  let charIdx = 0;
+                  return units.map((ch, ci) => {
+                    if (ch.trim() === '') {
+                      const spW = ctx.measureText(' ').width * ch.length;
+                      cx += spW;
+                      return null;
+                    }
+                    const { y: ty, r: tr } = twistCalc(charIdx, units.filter(u=>u.trim()).length, seg.twistPattern, seg.twistOffset);
+                    charIdx++;
+                    const chW = ctx.measureText(ch).width + (seg.twistApply==='char' ? ls : ls * Math.max(0, ch.length-1));
+                    const tx = cx;
+                    cx += chW + (seg.twistApply==='word' ? ls : 0);
+                    return (
+                      <text key={ci} x={tx} y={p.y + ty} fill={fill}
+                        stroke={hasStroke?seg.strokeColor:'none'}
+                        strokeWidth={hasStroke?seg.strokeWidth:0}
+                        paintOrder="stroke fill"
+                        fontFamily={`'${seg.fontFamily}', sans-serif`}
+                        fontSize={seg.fontSize} fontWeight={seg.fontWeight}
+                        fontStyle={seg.italic?'italic':'normal'}
+                        letterSpacing={seg.letterSpacing}
+                        textDecoration={seg.textDecoration}
+                        filter={hasFilt?`url(#${uid}f${i})`:undefined}
+                        transform={`rotate(${(seg.rotation||0)+tr} ${tx} ${p.y + ty})`}
+                      >{ch}</text>
+                    );
+                  });
+                })() : (
                 <text x={p.x} y={p.y} fill={fill}
                   stroke={hasStroke?seg.strokeColor:'none'}
                   strokeWidth={hasStroke?seg.strokeWidth:0}
@@ -1342,6 +1399,7 @@ export default function App() {
                   filter={hasFilt?`url(#${uid}f${i})`:undefined}
                   transform={seg.rotation?`rotate(${seg.rotation} ${p.x} ${p.y})`:undefined}
                 >{meas[i].d}</text>
+                )}
                 {isSel && (
                   <g data-handle="rotate" style={{ cursor:'grab' }}
                     onMouseDown={(e) => {
