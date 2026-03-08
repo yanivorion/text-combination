@@ -670,6 +670,7 @@ export default function App() {
   const [layerPos, setLayerPos] = useState({ x:12, y:12 });
   const [dragRot,  setDragRot]  = useState(false);
   const [creationsOpen, setCreationsOpen] = useState(false);
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
   const [creations, setCreations] = useState(lsCache);
   const [saveToast, setSaveToast] = useState('');
   const [cloudReady, setCloudReady] = useState(false);
@@ -1666,6 +1667,7 @@ export default function App() {
   const IcoShare = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="2.5" r="1.5"/><circle cx="9" cy="9.5" r="1.5"/><circle cx="3" cy="6" r="1.5"/><line x1="4.4" y1="5.2" x2="7.6" y2="3.3"/><line x1="4.4" y1="6.8" x2="7.6" y2="8.7"/></svg>;
   const IcoFolder = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M1 3V10a1 1 0 001 1h8a1 1 0 001-1V5a1 1 0 00-1-1H6L4.5 2.5A1 1 0 003.8 2H2A1 1 0 001 3z"/></svg>;
   const IcoPresent = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="1.5" width="10" height="7" rx="1"/><path d="M4 10.5h4M6 8.5v2"/><path d="M4.5 5L8 5M4.5 3.5L6.5 3.5"/></svg>;
+  const IcoTools = <svg width={11} height={11} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M1 4h10M1 8h10"/><circle cx="3" cy="4" r="1.2" fill="currentColor"/><circle cx="9" cy="8" r="1.2" fill="currentColor"/></svg>;
 
   const A11yPanel = ({ segs: ss, segCount: cnt, gTag: tag, gDir: dir, gAlign: al, gGap: gap, gWrap: wrap, mode: m, dispText: dt, fxStyle: fx, segStyle: sst, genCode: gc }) => {
     const [activeTab, setActiveTab] = useState('tree');
@@ -1962,15 +1964,12 @@ export default function App() {
         <div style={{ display:'flex', gap:7, alignItems:'center' }}>
           {[
             { onClick:replay, icon:IcoReplay, label:'Replay', dark:false, d:120 },
-            { onClick:copyCode, icon:IcoCopy, label:'Copy', dark:false, d:160 },
-            { onClick:()=>setCodeOpen(o=>!o), icon:IcoCode, label:codeOpen?'Hide Code':'Code', dark:codeOpen, d:200 },
-            { onClick:()=>setA11yOpen(o=>!o), icon:IcoA11y, label:a11yOpen?'Close A11y':'A11y', dark:a11yOpen, d:240 },
-            { onClick:()=>setPresetsOpen(o=>!o), icon:IcoPresets, label:'Presets', dark:presetsOpen, d:280, tour:'presets-btn' },
-            { onClick:handleSave, icon:IcoSave, label:'Save', dark:false, d:320 },
-            { onClick:handleShare, icon:IcoShare, label:'Share', dark:false, d:360 },
-            { onClick:()=>setCreationsOpen(o=>!o), icon:IcoFolder, label:'My Files', dark:creationsOpen, d:400 },
-            { onClick:()=>{ setPresentMode(true); setPresentSlide(0); }, icon:IcoPresent, label:'Present', dark:false, d:440 },
-            { onClick:()=>setTourStep(0), icon:IcoTour, label:'Tour', dark:tourStep>=0, d:480 },
+            { onClick:()=>setToolsPanelOpen(o=>!o), icon:IcoTools, label:toolsPanelOpen?'Hide Tools':'Tools', dark:toolsPanelOpen, d:160 },
+            { onClick:handleSave, icon:IcoSave, label:'Save', dark:false, d:200 },
+            { onClick:handleShare, icon:IcoShare, label:'Share', dark:false, d:240 },
+            { onClick:()=>setCreationsOpen(o=>!o), icon:IcoFolder, label:'My Files', dark:creationsOpen, d:280 },
+            { onClick:()=>{ setPresentMode(true); setPresentSlide(0); }, icon:IcoPresent, label:'Present', dark:false, d:320 },
+            { onClick:()=>setTourStep(0), icon:IcoTour, label:'Tour', dark:tourStep>=0, d:360 },
           ].map((b,bi)=>(
             <div key={bi} data-tour={b.tour||undefined} style={enter('tcSlideL', b.d)}>
               <TBtn onClick={b.onClick} icon={b.icon} dark={b.dark}>{b.label}</TBtn>
@@ -2207,18 +2206,6 @@ export default function App() {
             <span style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:T.text4, marginRight:4 }}>
               {a11yOpen ? 'Accessibility' : 'Canvas'}
             </span>
-            {!a11yOpen && <div data-tour="bg-swatches" style={{ display:'flex', gap:6, alignItems:'center' }}>
-              {BG_SWATCHES.map(v=>(
-                <button key={v} onClick={()=>setBgColor(v)} title={v} style={{
-                  width:22, height:22, borderRadius:4, background:v,
-                  border: bgColor===v ? `2px solid ${T.accent}` : `1px solid ${T.border2}`,
-                  cursor:'pointer', boxSizing:'border-box', padding:0,
-                  transform:bgColor===v?'scale(1.1)':'scale(1)',
-                  transition:`all 200ms ${EASE.out}`,
-                  boxShadow: bgColor===v ? `0 0 0 2px rgba(59,130,246,0.18)` : 'none',
-                }}/>
-              ))}
-            </div>}
             <div style={{ flex:1 }}/>
             {a11yOpen && <A11yScoreBadge segs={segs} segCount={segCount} gTag={gTag} mode={mode}/>}
             <span style={{ fontSize:9, fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase', color:T.accent, padding:'3px 8px', background:T.accentSoft, borderRadius:6 }}>
@@ -2326,27 +2313,76 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ borderTop:`1px solid ${T.border}`, flexShrink:0, maxHeight:codeOpen?'60%':40, overflow:'hidden', transition:`max-height 350ms ${EASE.out}` }}>
-                <button onClick={()=>setCodeOpen(o=>!o)}
-                  style={{ display:'flex', alignItems:'center', gap:8, padding:'0 16px', height:40, cursor:'pointer', userSelect:'none', width:'100%', background:'none', border:'none', fontFamily:'inherit', transition:`background 300ms ${EASE.out}` }}
-                  onMouseEnter={e=>e.currentTarget.style.background=T.accentSoft}
-                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}
-                >
-                  <span style={{ fontSize:10, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', color:T.text4 }}>Generated Code</span>
-                  <div style={{ flex:1 }}/>
-                  <svg width={10} height={6} viewBox="0 0 10 6" fill="none" stroke={codeOpen?T.accent:T.text4} strokeWidth={1.5}
-                    style={{ transition:`transform 300ms ${EASE.out}, stroke 300ms ${EASE.out}`, transform:codeOpen?'rotate(0deg)':'rotate(-90deg)', flexShrink:0 }}>
-                    <path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-                <div style={{ padding:'10px 16px 16px', background:'rgba(0,0,0,0.02)', overflowY:'auto', maxHeight:'calc(60% - 40px)' }}>
-                  <pre style={{ fontFamily:"'SF Mono','Fira Code',monospace", fontSize:10, lineHeight:1.7, color:T.text2, whiteSpace:'pre', overflowX:'auto', background:'rgba(255,255,255,0.4)', padding:12, borderRadius:8, border:`1px solid ${T.border}` }}>
-                    {genCode()}
-                  </pre>
-                </div>
-              </div>
             </>
           )}
+        </div>
+
+        {/* ── TOOLS SIDE PANEL ── */}
+        <div style={{
+          ...glassPanel,
+          width: toolsPanelOpen ? 240 : 0,
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          transition: `width 350ms ${EASE.out}, opacity 350ms ${EASE.out}, padding 350ms ${EASE.out}`,
+          opacity: toolsPanelOpen ? 1 : 0,
+          padding: toolsPanelOpen ? undefined : 0,
+          border: toolsPanelOpen ? undefined : 'none',
+          ...enter('tcSlideL', 160),
+          ...(demoMode ? { width: 0, overflow: 'hidden', padding: 0, border: 'none' } : {}),
+        }}>
+
+          {/* Actions */}
+          <div style={{ padding: '10px 12px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.text4, marginBottom: 8, display: 'block' }}>Actions</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <TBtn onClick={copyCode} icon={IcoCopy}>Copy</TBtn>
+              <TBtn onClick={() => setCodeOpen(o => !o)} icon={IcoCode} dark={codeOpen}>{codeOpen ? 'Hide Code' : 'Code'}</TBtn>
+              <TBtn onClick={() => setA11yOpen(o => !o)} icon={IcoA11y} dark={a11yOpen}>{a11yOpen ? 'Close A11y' : 'A11y'}</TBtn>
+              <div data-tour="presets-btn"><TBtn onClick={() => setPresetsOpen(o => !o)} icon={IcoPresets} dark={presetsOpen}>Presets</TBtn></div>
+            </div>
+          </div>
+
+          {/* Canvas Background */}
+          <div style={{ padding: '10px 12px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.text4, marginBottom: 8, display: 'block' }}>Canvas</span>
+            <div data-tour="bg-swatches" style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              {BG_SWATCHES.map(v => (
+                <button key={v} onClick={() => setBgColor(v)} title={v} style={{
+                  width: 22, height: 22, borderRadius: 4, background: v,
+                  border: bgColor === v ? `2px solid ${T.accent}` : `1px solid ${T.border2}`,
+                  cursor: 'pointer', boxSizing: 'border-box', padding: 0,
+                  transform: bgColor === v ? 'scale(1.1)' : 'scale(1)',
+                  transition: `all 200ms ${EASE.out}`,
+                  boxShadow: bgColor === v ? `0 0 0 2px rgba(59,130,246,0.18)` : 'none',
+                }} />
+              ))}
+            </div>
+          </div>
+
+          {/* Generated Code */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <button onClick={() => setCodeOpen(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', height: 36, cursor: 'pointer', userSelect: 'none', width: '100%', background: 'none', border: 'none', fontFamily: 'inherit', flexShrink: 0, transition: `background 300ms ${EASE.out}` }}
+              onMouseEnter={e => e.currentTarget.style.background = T.accentSoft}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.text4 }}>Generated Code</span>
+              <div style={{ flex: 1 }} />
+              <svg width={10} height={6} viewBox="0 0 10 6" fill="none" stroke={codeOpen ? T.accent : T.text4} strokeWidth={1.5}
+                style={{ transition: `transform 300ms ${EASE.out}, stroke 300ms ${EASE.out}`, transform: codeOpen ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }}>
+                <path d="M1 1l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {codeOpen && (
+              <div style={{ flex: 1, padding: '0 12px 12px', overflowY: 'auto' }}>
+                <pre style={{ fontFamily: "'SF Mono','Fira Code',monospace", fontSize: 9, lineHeight: 1.6, color: T.text2, whiteSpace: 'pre', overflowX: 'auto', background: 'rgba(255,255,255,0.4)', padding: 10, borderRadius: 8, border: `1px solid ${T.border}`, margin: 0 }}>
+                  {genCode()}
+                </pre>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
