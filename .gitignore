@@ -8,3 +8,6 @@ dist
 PD Template/
 html vs svg pros and cons/
 deno.lock
+.env
+.env.local
+build

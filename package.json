@@ -4,11 +4,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "npm run fonts:build && vite build",
+    "fonts:build": "node scripts/generate-font-faces.mjs",
+    "wix-presets:build": "node scripts/generate-wix-presets.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.0",
     "@shopify/draggable": "^1.2.1",
+    "html-to-image": "^1.11.13",
+    "jszip": "^3.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

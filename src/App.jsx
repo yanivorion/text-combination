@@ -1,6 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Sortable } from '@shopify/draggable';
+import { SvgFilters, BodyOutlineOutFilters, presets, WixEffect, WixEffectsPanel, wixSegOverrides, wixPresetSegFields } from './effects/index.jsx';
+import { domNodeToPngBlob, downloadBlob } from './utils/exportPng.js';
+import fontFamilies from './generated/font-families.json';
 
 // ─── Persistence helpers ────────────────────────────────────────────────────────
 const LS_KEY = 'tc_creations';
@@ -52,6 +55,8 @@ const FONT_GROUPS = {
   'Sans-Serif':['Bebas Neue','Josefin Sans','Unbounded','Space Grotesk','Inter','DM Sans','Outfit','Figtree'],
   Display:    ['Abril Fatface','Righteous','Lobster','Pacifico','Titan One'],
   Mono:       ['Space Mono','IBM Plex Mono','Fira Mono'],
+  'Wix Editor': fontFamilies.wix,
+  'Fonts 2':    fontFamilies.catalog,
 };
 
 const FONT_OPTS = Object.entries(FONT_GROUPS).map(([g, fonts]) => ({
@@ -85,7 +90,7 @@ const mkSeg = (n) => ({
   ...SEG_PRESETS[(n - 1) % 4],
   textDecoration:'none', lineHeight:'1', rotation:0,
   badge:false, badgeColor:'#e4e4e7', badgePadding:'4px 10px', badgeRadius:'6px',
-  effect:'none', strokeColor:'#000000', strokeWidth:'2px', strokeHollow:false,
+  effect:'none', wixPreset:null, strokeColor:'#000000', strokeWidth:'2px', strokeHollow:false,
   gradient:false, gradStart:'#3b82f6', gradEnd:'#60a5fa', gradDir:'horizontal',
   layering:false, layerCount:4, layerColors:['#8b5cf6','#c084fc','#f59e0b','#fbbf24'], layerAngle:150, layerSpace:6,
   twist:false, twistPattern:'wave', twistOffset:10, twistApply:'char',
@@ -671,6 +676,7 @@ export default function App() {
   const [dragRot,  setDragRot]  = useState(false);
   const [creationsOpen, setCreationsOpen] = useState(false);
   const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [creations, setCreations] = useState(lsCache);
   const [saveToast, setSaveToast] = useState('');
   const [cloudReady, setCloudReady] = useState(false);
@@ -710,6 +716,30 @@ export default function App() {
 
   const upd = (field, val) =>
     setSegs(prev => { const n=[...prev]; n[activeSeg]={...n[activeSeg],[field]:val}; return n; });
+
+  const applyClassicEffect = (effectVal) => {
+    setSegs(prev => {
+      const n = [...prev];
+      n[activeSeg] = { ...n[activeSeg], effect: effectVal, wixPreset: null };
+      return n;
+    });
+  };
+
+  const applyWixPreset = (preset) => {
+    setMode('html');
+    setSegs(prev => {
+      const n = [...prev];
+      n[activeSeg] = { ...n[activeSeg], ...wixPresetSegFields(preset) };
+      return n;
+    });
+  };
+
+  const clearWixPreset = () => upd('wixPreset', null);
+
+  const hasWixFx = useMemo(
+    () => segs.slice(0, segCount).some((seg) => seg.wixPreset),
+    [segs, segCount],
+  );
 
   const applyComboPreset = (preset) => {
     const newSegs = preset.segs.map((ps, i) => ({
@@ -781,6 +811,18 @@ export default function App() {
     a.download = `text-combination-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const handleExportPng = async () => {
+    const el = stageRef.current?.firstElementChild;
+    if (!el) return;
+    setExportBusy(true);
+    try {
+      const blob = await domNodeToPngBlob(el, 2048);
+      downloadBlob(blob, `text-combination-${Date.now()}.png`);
+    } finally {
+      setExportBusy(false);
+    }
   };
 
   const handleImport = (e) => {
@@ -1331,6 +1373,22 @@ export default function App() {
                   />
                 )}
                 {badge}
+                {seg.wixPreset ? (
+                  <g transform={seg.rotation ? `rotate(${seg.rotation} ${p.x} ${p.y})` : undefined}>
+                    <foreignObject
+                      x={p.x - 6}
+                      y={p.y - meas[i].h * 0.88}
+                      width={meas[i].w + 32}
+                      height={meas[i].h * 1.6}
+                      style={{ overflow: 'visible' }}
+                    >
+                      <div xmlns="http://www.w3.org/1999/xhtml" style={{ display: 'inline-block', lineHeight: 1.2 }}>
+                        <WixEffect presetId={seg.wixPreset} text={meas[i].d} overrides={wixSegOverrides(seg)} />
+                      </div>
+                    </foreignObject>
+                  </g>
+                ) : (
+                <>
                 {seg.layering && (() => {
                   const rad = (seg.layerAngle || 150) * Math.PI / 180;
                   const lyrs = [];
@@ -1399,6 +1457,8 @@ export default function App() {
                   filter={hasFilt?`url(#${uid}f${i})`:undefined}
                   transform={seg.rotation?`rotate(${seg.rotation} ${p.x} ${p.y})`:undefined}
                 >{meas[i].d}</text>
+                )}
+                </>
                 )}
                 {isSel && (
                   <g data-handle="rotate" style={{ cursor:'grab' }}
@@ -1567,7 +1627,19 @@ export default function App() {
                 zIndex: canvasSel === i ? 5 : undefined,
                 ...(hasPerGap && !isLast ? { [marginProp]: gap } : {}),
               }}>
-              <span style={segStyle(seg)}>{renderSegContent(seg)}</span>
+              {seg.wixPreset ? (
+                <span style={{
+                  display:'inline-block',
+                  transform: seg.rotation ? `rotate(${seg.rotation}deg)` : undefined,
+                  background: seg.badge ? seg.badgeColor : undefined,
+                  padding: seg.badge ? seg.badgePadding : undefined,
+                  borderRadius: seg.badge ? seg.badgeRadius : undefined,
+                }}>
+                  <WixEffect presetId={seg.wixPreset} text={dispText(seg)} overrides={wixSegOverrides(seg)} />
+                </span>
+              ) : (
+                <span style={segStyle(seg)}>{renderSegContent(seg)}</span>
+              )}
               {canvasSel === i && (
                 <div data-handle="rotate" style={{
                   position:'absolute', top:-8, right:-8, width:16, height:16, borderRadius:'50%',
@@ -2008,9 +2080,9 @@ export default function App() {
         <span style={{ fontSize:11, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:T.text1, paddingRight:18, marginRight:6, borderRight:`1px solid ${T.border}`, whiteSpace:'nowrap' }}>
           Text Combination
         </span>
-        <div style={{ display:'flex', height:'100%', marginRight:'auto', marginLeft:6 }}>
+        <div style={{ display:'flex', height:'100%', marginRight:'auto', marginLeft:6, borderRight:`1px solid ${T.border}`, paddingRight:8 }}>
           {['html','svg'].map((m,mi)=>(
-            <button key={m} onClick={()=>setMode(m)} style={{
+            <button key={m} onClick={() => setMode(m)} style={{
               height:'100%', padding:'0 14px', background:'none', border:'none',
               borderBottom: mode===m ? `2px solid ${T.accent}` : '2px solid transparent',
               color:mode===m?T.text1:T.text3, fontSize:11, fontWeight:mode===m?600:400,
@@ -2037,6 +2109,8 @@ export default function App() {
       </div>
 
       {/* ── BODY ── */}
+      <SvgFilters />
+      <BodyOutlineOutFilters />
       <div style={{ flex:1, display:'flex', gap: demoMode ? 0 : 12, padding: demoMode ? 0 : 12, overflow:'hidden', minHeight:0 }}>
 
         {/* ── PANEL ── */}
@@ -2157,21 +2231,38 @@ export default function App() {
             </Acc>
 
             <Acc data-tour="effects" open={acc.a3} onToggle={(e)=>setAcc(p=> e.metaKey||e.ctrlKey ? ({...p,a3:!p.a3}) : ({...p,a1:false,a2:false,a3:!p.a3}))} num="03" title="Effects">
-              <Lbl>Quick Effect Presets</Lbl>
+              <Lbl>Text effects</Lbl>
+              {s.wixPreset && (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:8, padding:'6px 8px', background:T.accentSoft, borderRadius:6, border:`1px solid rgba(59,130,246,0.15)` }}>
+                  <span style={{ fontSize:10, color:T.text1, fontWeight:600 }}>
+                    {presets.find((p) => p.id === s.wixPreset)?.name || s.wixPreset}
+                  </span>
+                  <button type="button" onClick={clearWixPreset} style={{
+                    fontSize:9, fontFamily:'inherit', padding:'3px 8px', borderRadius:5, cursor:'pointer',
+                    border:`1px solid ${T.ctrlBorder}`, background:T.ctrl, color:T.text2,
+                  }}>Clear</button>
+                </div>
+              )}
+              <WixEffectsPanel
+                selectedId={s.wixPreset}
+                onSelect={applyWixPreset}
+              />
+              <Sep/>
+              <Lbl>Custom Effects</Lbl>
               <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:12 }}>
                 {O.effect.map(e => (
-                  <button key={e.v} onClick={() => upd('effect', e.v)} style={{
+                  <button key={e.v} onClick={() => applyClassicEffect(e.v)} style={{
                     padding:'5px 9px', fontSize:9, fontWeight:500, fontFamily:'inherit',
-                    background: s.effect === e.v ? T.accent : T.ctrl,
-                    color: s.effect === e.v ? '#fff' : T.text2,
-                    border: `1px solid ${s.effect === e.v ? T.accent : T.ctrlBorder}`,
+                    background: s.effect === e.v && !s.wixPreset ? T.accent : T.ctrl,
+                    color: s.effect === e.v && !s.wixPreset ? '#fff' : T.text2,
+                    border: `1px solid ${s.effect === e.v && !s.wixPreset ? T.accent : T.ctrlBorder}`,
                     borderRadius:5, cursor:'pointer',
                     transition:`all 200ms ${EASE.out}`,
-                    boxShadow: s.effect === e.v ? '0 2px 8px rgba(59,130,246,0.25)' : 'none',
+                    boxShadow: s.effect === e.v && !s.wixPreset ? '0 2px 8px rgba(59,130,246,0.25)' : 'none',
                   }}>{e.l}</button>
                 ))}
               </div>
-              <Sub show={s.effect==='outline'||s.effect==='retro'}>
+              <Sub show={!s.wixPreset && (s.effect==='outline'||s.effect==='retro')}>
                 <Row>
                   <Field label="Stroke"><ColorField val={s.strokeColor} onChange={v=>upd('strokeColor',v)}/></Field>
                   <Field label="W" w={62}><Sel val={s.strokeWidth} onChange={v=>upd('strokeWidth',v)} opts={O.strokeW}/></Field>
@@ -2399,6 +2490,7 @@ export default function App() {
               <TBtn onClick={() => setCodeOpen(o => !o)} icon={IcoCode} dark={codeOpen}>{codeOpen ? 'Hide Code' : 'Code'}</TBtn>
               <TBtn onClick={() => setA11yOpen(o => !o)} icon={IcoA11y} dark={a11yOpen}>{a11yOpen ? 'Close A11y' : 'A11y'}</TBtn>
               <div data-tour="presets-btn"><TBtn onClick={() => setPresetsOpen(o => !o)} icon={IcoPresets} dark={presetsOpen}>Presets</TBtn></div>
+              <TBtn onClick={handleExportPng} icon={IcoSave} dark={exportBusy}>{exportBusy ? 'Exporting…' : 'PNG'}</TBtn>
             </div>
           </div>
 

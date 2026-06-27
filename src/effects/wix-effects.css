@@ -1,0 +1,416 @@
+/* Ported from Wix Text Effects component CSS (editor-designers.wixsite.com) */
+
+.wfx {
+  display: inline-block;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.wfx * {
+  box-sizing: border-box;
+}
+
+/* ── outline-out (Galaxy, Signal) — Wix _container_ph38t_1 layering ── */
+.wfx-oo-unit {
+  display: inline-grid;
+  isolation: isolate;
+  color: var(--text-effects-color-1);
+  lighting-color: #fff;
+  text-shadow:
+    var(--text-effects-color-2) 0 0 0.7px,
+    var(--text-effects-color-2) 0 0 1.1px,
+    var(--text-effects-color-2) 0 0 1.1px;
+  filter: var(--layer-blend-mode, none);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wfx-oo-unit.wfx-oo--italic {
+  transform: skewX(-14deg);
+  transform-origin: left center;
+}
+
+.wfx-oo-unit .wfx-oo-text,
+.wfx-oo-unit::before,
+.wfx-oo-unit::after {
+  grid-area: 1 / 1 / -1 / -1;
+  font-style: inherit;
+}
+
+.wfx-oo-unit .wfx-oo-text {
+  display: block;
+}
+
+.wfx-oo-unit::before,
+.wfx-oo-unit::after {
+  content: attr(data-text);
+  content: attr(data-text) / '';
+  text-shadow:
+    var(--text-effects-color-2) 0 0.7px,
+    var(--text-effects-color-2) 0 0 1.1px,
+    var(--text-effects-color-2) 0 0 1.1px;
+}
+
+.wfx-oo-unit::after {
+  filter: var(--bevel-angle, none);
+}
+
+/* Wix filter color space hints */
+svg filter[id^='outline-out-lightA3_azimuth:'] {
+  color-interpolation-filters: sRGB;
+}
+
+svg filter[id^='outline-out-dark-glass_blend-mode:'] {
+  color-interpolation-filters: linearRGB;
+}
+
+/* ── neon-sign (REMIX) ── */
+.wfx-neon {
+  --neon-text-color: color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  --text-blur-factor: 0.2;
+  color: var(--text-color);
+  border-radius: 2rem;
+  text-shadow:
+    -0.2rem -0.2rem calc(1rem * var(--shadow-blur) * var(--text-blur-factor)) color-mix(in srgb, var(--text-color), transparent 50%),
+    0.2rem 0.2rem calc(1rem * var(--shadow-blur) * var(--text-blur-factor)) color-mix(in srgb, var(--text-color), transparent 50%),
+    0 0 calc(2rem * var(--shadow-blur) * var(--text-blur-factor)) var(--neon-text-color),
+    0 0 calc(4rem * var(--shadow-blur) * var(--text-blur-factor)) var(--neon-text-color),
+    0 0 calc(6rem * var(--shadow-blur) * var(--text-blur-factor)) var(--neon-text-color),
+    0 0 calc(8rem * var(--shadow-blur) * var(--text-blur-factor)) var(--neon-text-color),
+    0 0 calc(10rem * var(--shadow-blur) * var(--text-blur-factor)) var(--neon-text-color);
+}
+
+/* ── glass (ASTRO, Bouncy, Cloudy, Glaze, Refined, Jolt) ── */
+.wfx-glass-unit {
+  --unit-size: 0.005em;
+  --shadow-blur-unit-size: 0.6em;
+  --scaled-border: calc(var(--border-width) * var(--unit-size));
+  --color1: var(--text-color);
+  --color2: var(--border-color);
+  display: inline-grid;
+  text-align: center;
+  width: fit-content;
+  lighting-color: rgb(204, 204, 204);
+  text-shadow: 0 0 0.7px, 0 0 1.1px, 0 0 1.1px;
+  filter: drop-shadow(0 calc(0.15em * var(--shadow-blur)) calc(0.4em * var(--shadow-blur)) var(--shadow-color));
+}
+
+.wfx-glass-unit .wfx-glass-text,
+.wfx-glass-unit::before,
+.wfx-glass-unit::after {
+  grid-area: 1 / 1 / -1 / -1;
+}
+
+.wfx-glass-unit::before,
+.wfx-glass-unit::after {
+  lighting-color: rgb(204, 204, 204);
+  content: attr(data-text) / "";
+}
+
+.wfx-glass-unit::before {
+  -webkit-text-stroke: var(--scaled-border) var(--color2);
+}
+
+.wfx-glass-unit::after {
+  color: var(--color1);
+  filter: url(#wfx-lightA3);
+}
+
+.wfx-glass-unit .wfx-glass-text {
+  color: var(--color1);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── sticker (Apex, Space, Fluffy, Night) ── */
+.wfx-sticker-unit {
+  isolation: isolate;
+  display: inline-grid;
+  grid-template-areas: "text";
+  place-items: center;
+  color: var(--text-effects-color-5, transparent);
+  --stroke-unit-size: 0.01em;
+  --unit-size: 0.01em;
+  --shadow-distance-unit-size: 0.005em;
+  --outer-stroke-distance-factor: calc(var(--outer-stroke) * 0.2);
+}
+
+.wfx-sticker-unit > *,
+.wfx-sticker-unit::before,
+.wfx-sticker-unit::after {
+  grid-area: text;
+}
+
+.wfx-sticker-text {
+  padding: 0 0.1em;
+  margin: 0 -0.1em;
+  grid-area: text;
+  -webkit-text-stroke: calc(var(--stroke-unit-size) * var(--text-stroke, 0)) var(--text-effects-color-5, transparent);
+  background-image: var(--bg-gradient, none);
+  background-color: var(--bg-solid, transparent);
+  opacity: var(--bg-opacity, 1);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.wfx-sticker-unit::before,
+.wfx-sticker-unit::after {
+  color: transparent;
+  content: attr(data-text) / "";
+  padding: 0 0.1em;
+  margin: 0 -0.1em;
+}
+
+.wfx-sticker-unit::before {
+  -webkit-text-stroke: calc(var(--stroke-unit-size) * var(--outer-stroke)) var(--outer-stroke-color);
+  transform: translate(
+    calc(var(--shadow-distance-unit-size) * var(--outer-stroke-distance) * var(--outer-stroke-distance-factor) * cos(var(--outer-stroke-angle))),
+    calc(var(--shadow-distance-unit-size) * var(--outer-stroke-distance) * var(--outer-stroke-distance-factor) * sin(var(--outer-stroke-angle)))
+  );
+  z-index: -1;
+}
+
+.wfx-sticker-unit::after {
+  -webkit-text-stroke: calc(var(--stroke-unit-size) * var(--outer-stroke)) color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+  transform: translate(
+    calc(var(--shadow-distance-unit-size) * var(--shadow-distance) * var(--outer-stroke-distance-factor) * cos(var(--shadow-angle))),
+    calc(var(--shadow-distance-unit-size) * var(--shadow-distance) * var(--outer-stroke-distance-factor) * sin(var(--shadow-angle)))
+  );
+  filter: blur(calc(var(--unit-size) * var(--shadow-blur)));
+  z-index: -2;
+}
+
+/* ── shook / 3D layers (BEYOND) ── */
+.wfx-shook-unit {
+  --unit-size: 0.003em;
+  isolation: isolate;
+  paint-order: stroke;
+  --outline-factor: 2;
+  --scaled-spacing: calc(var(--layer-spacing) * var(--unit-size));
+  --base-x: calc(cos(var(--bevel-angle)) * var(--scaled-spacing));
+  --base-y: calc(sin(var(--bevel-angle)) * var(--scaled-spacing));
+  --scaled-outline: calc(var(--outline-thickness, 1) * var(--unit-size) * var(--outline-factor));
+  display: inline-grid;
+}
+
+.wfx-shook-text {
+  color: var(--text-effects-color-1);
+  -webkit-text-stroke: var(--scaled-outline) var(--text-effects-outline-color);
+  grid-area: 1 / 1 / -1 / -1;
+}
+
+.wfx-shook-layer {
+  grid-area: 1 / 1 / -1 / -1;
+  -webkit-text-stroke: var(--scaled-outline) var(--text-effects-outline-color);
+  z-index: -1;
+}
+
+.wfx-shook-layer::before {
+  content: attr(data-text) / "";
+}
+
+.wfx-shook-l1 { color: var(--text-effects-color-2); transform: translate(calc(var(--base-x) * -1), calc(var(--base-y) * -1)); }
+.wfx-shook-l2 { color: var(--text-effects-color-3); transform: translate(calc(var(--base-x) * -2), calc(var(--base-y) * -2)); z-index: -2; }
+.wfx-shook-l3 { color: var(--text-effects-color-4); transform: translate(calc(var(--base-x) * -3), calc(var(--base-y) * -3)); z-index: -3; }
+.wfx-shook-l4 { color: var(--text-effects-color-5); transform: translate(calc(var(--base-x) * -4), calc(var(--base-y) * -4)); z-index: -4; }
+
+/* ── letter-press (Matte, Change) ── */
+.wfx-lp-unit {
+  isolation: isolate;
+  --size-unit: 0.01em;
+  --x-offset-factor: calc(cos(calc(90deg + var(--shadow-angle))) / sqrt(2));
+  --y-offset-factor: calc(sin(calc(90deg + var(--shadow-angle))) / sqrt(2));
+  --x-offset: calc(var(--size-unit) * var(--x-offset-factor) * var(--shadow-distance));
+  --y-offset: calc(-1 * var(--size-unit) * var(--y-offset-factor) * var(--shadow-distance));
+  --legacy-text-shadow: var(--x-offset) var(--y-offset) calc(var(--size-unit) * var(--shadow-blur)) rgb(from var(--text-effects-color-2) r g b / var(--shadow-opacity));
+  color: rgb(from var(--text-effects-color-1) r g b / var(--text-effects-opacity-color-1));
+  background: text rgb(153, 153, 153);
+  position: relative;
+  display: inline-grid;
+}
+
+.wfx-lp-unit::before,
+.wfx-lp-unit .wfx-lp-text {
+  grid-area: 1 / 1 / -1 / -1;
+}
+
+.wfx-lp-unit::before {
+  mix-blend-mode: var(--layer-blend-mode, normal);
+  content: attr(data-text) / "";
+  text-shadow: var(--text-shadow, var(--legacy-text-shadow));
+}
+
+/* ── glitch (Squish) ── */
+.wfx-glitch-unit {
+  --unit-size: 0.01em;
+  isolation: isolate;
+  display: inline-grid;
+  color: var(--text-effects-color-1);
+}
+
+.wfx-glitch-unit .wfx-glitch-text,
+.wfx-glitch-unit::before,
+.wfx-glitch-unit::after {
+  grid-area: 1 / 1 / -1 / -1;
+}
+
+.wfx-glitch-unit::before {
+  content: attr(data-text) / "";
+  color: var(--text-effects-color-2);
+  transform: translate(
+    calc(var(--unit-size) * var(--layer-distance) * cos(var(--layer-angle))),
+    calc(var(--unit-size) * var(--layer-distance) * sin(var(--layer-angle)))
+  );
+  z-index: -1;
+}
+
+.wfx-glitch-unit::after {
+  content: attr(data-text) / "";
+  color: var(--text-effects-color-3);
+  transform: translate(
+    calc(-1 * var(--unit-size) * var(--layer-distance) * cos(var(--layer-angle))),
+    calc(-1 * var(--unit-size) * var(--layer-distance) * sin(var(--layer-angle)))
+  );
+  z-index: -2;
+}
+
+/* ── striped (Blossom, Level Up, Direct, Antenna) ── */
+.wfx-striped {
+  --color1: var(--text-effects-color-1);
+  --color2: var(--text-effects-color-2);
+  background: linear-gradient(
+    calc(var(--stripe-angle, 225deg) + 90deg),
+    var(--color1) 25%,
+    var(--color2) 25%,
+    var(--color2) 50%,
+    var(--color1) 50%,
+    var(--color1) 75%,
+    var(--color2) 75%,
+    var(--color2)
+  );
+  background-size: calc(var(--stripe-size, 8) * 0.01em) calc(var(--stripe-size, 8) * 0.01em);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ── retro (Celebrate) ── */
+.wfx-retro-unit {
+  --unit-size: 0.004em;
+  isolation: isolate;
+  display: inline-grid;
+  color: var(--text-effects-color-1);
+  filter: drop-shadow(
+    calc(cos(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size))
+    calc(sin(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size))
+    calc(var(--shadow-blur) * 1px)
+    var(--text-effects-color-2)
+  );
+}
+
+.wfx-retro-unit .wfx-retro-text,
+.wfx-retro-unit .wfx-retro-layer {
+  grid-area: 1 / 1 / -1 / -1;
+}
+
+.wfx-retro-l1 { color: var(--text-effects-color-2); transform: translate(calc(cos(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size) * -0.25), calc(sin(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size) * -0.25)); z-index: -1; }
+.wfx-retro-l2 { color: var(--text-effects-color-3); transform: translate(calc(cos(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size) * -0.5), calc(sin(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size) * -0.5)); z-index: -2; }
+.wfx-retro-l3 { color: var(--text-effects-color-4); transform: translate(calc(cos(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size) * -0.75), calc(sin(var(--bevel-angle)) * var(--bevel-depth) * var(--unit-size) * -0.75)); z-index: -3; }
+
+/* ── noisy (Organic, Blurry, Hollow, Breeze) ── */
+.wfx-noisy {
+  color: var(--text-effects-color-1);
+  filter: var(--squiggly-level, url(#noisy_squiggly:7));
+}
+
+/* ── 3d (Friction, Shine, Smash) ── */
+.wfx-3d {
+  --unit-size: 0.01em;
+  display: inline flow-root;
+  color: rgb(from var(--fill-color) r g b / var(--fill-opacity, 1));
+  -webkit-text-stroke: calc(var(--unit-size) * var(--text-stroke, 0))
+    rgb(from var(--text-stroke-color, transparent) r g b / var(--text-stroke-opacity, 1));
+  filter:
+    drop-shadow(var(--text-shadow-1, 0 0 0 transparent))
+    drop-shadow(var(--text-shadow-2, 0 0 0 transparent))
+    drop-shadow(var(--text-shadow-3, 0 0 0 transparent));
+}
+
+/* ── matrix (Funk) ── */
+.wfx-matrix-unit {
+  --blur-factor: 0.001em;
+  --text-blur-factor: 0.01em;
+  --matrix-color: var(--text-effects-color-1);
+  color: var(--matrix-color);
+  display: inline-grid;
+  text-shadow:
+    0 0 calc(var(--text-blur, 1) * var(--text-blur-factor) * 5) var(--matrix-color),
+    0 0 calc(var(--text-blur, 1) * var(--text-blur-factor) * 10) var(--matrix-color),
+    0 0 calc(var(--text-blur, 1) * var(--text-blur-factor) * 15) var(--matrix-color);
+}
+
+.wfx-matrix-unit .wfx-matrix-text,
+.wfx-matrix-unit::before {
+  grid-area: 1 / 1 / -1 / -1;
+}
+
+.wfx-matrix-unit::before {
+  content: attr(data-text);
+  clip-path: polygon(
+    0 calc(var(--mask-position, 0) * 1%),
+    100% calc(var(--mask-position, 0) * 1%),
+    100% calc(45% + var(--mask-position, 0) * 1%),
+    0 calc(45% + var(--mask-position, 0) * 1%)
+  );
+  transform: translate(-2px, -2px);
+  color: var(--matrix-color);
+  text-shadow:
+    0 0 calc(var(--mask-blur, 1) * var(--blur-factor) * 10) var(--matrix-color),
+    0 0 calc(var(--mask-blur, 1) * var(--blur-factor) * 15) var(--matrix-color);
+}
+
+/* ── bauhaus (Direct, Glow, Stellar) ── */
+.wfx-bauhaus-unit {
+  isolation: isolate;
+  --unit-size: 0.01em;
+  --color1: var(--text-effects-color-1);
+  --color2: var(--text-effects-color-2);
+  --color3: var(--text-effects-color-3);
+  color: var(--color1);
+  display: inline-grid;
+}
+
+.wfx-bauhaus-unit .wfx-bauhaus-text,
+.wfx-bauhaus-unit::before,
+.wfx-bauhaus-unit::after {
+  grid-area: 1 / 1 / -1 / -1;
+}
+
+.wfx-bauhaus-unit::before {
+  content: attr(data-text);
+  color: var(--color2);
+  transform: translate(
+    calc(var(--unit-size) * var(--shadow-distance, 6) * cos(var(--bevel-angle))),
+    calc(var(--unit-size) * var(--shadow-distance, 6) * sin(var(--bevel-angle)))
+  );
+  mix-blend-mode: var(--layer-blend-mode, multiply);
+  z-index: 3;
+}
+
+.wfx-bauhaus-unit::after {
+  content: attr(data-text);
+  color: var(--color3);
+  transform: translate(
+    calc(-1 * var(--unit-size) * var(--shadow-distance, 6) * cos(var(--bevel-angle))),
+    calc(-1 * var(--unit-size) * var(--shadow-distance, 6) * sin(var(--bevel-angle)))
+  );
+  mix-blend-mode: var(--layer-blend-mode, multiply);
+  z-index: 1;
+}
+
+.wfx-bauhaus-text {
+  mix-blend-mode: var(--layer-blend-mode, multiply);
+  z-index: 2;
+}
